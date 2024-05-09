@@ -1,5 +1,5 @@
 # ppc-capstone
-This is a PowerPC architecture plugin for Binary Ninja.
+This is a sparc architecture plugin for Binary Ninja.
 
 ## This Repo Demonstrates
 
