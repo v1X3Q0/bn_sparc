@@ -12,10 +12,10 @@ easy-to-compile test harnesses like the speed test.
 
 There are three main functions:
 
-powerpc_init() - initializes this module
-powerpc_release() - un-initializes this module
-powerpc_decompose() - converts bytes into decomp_result
-powerpc_disassemble() - converts decomp_result to string
+sparc_init() - initializes this module
+sparc_release() - un-initializes this module
+sparc_decompose() - converts bytes into decomp_result
+sparc_disassemble() - converts decomp_result to string
 
 Then some helpers if you need them:
 
@@ -68,11 +68,11 @@ struct decomp_result
 int DoesQualifyForLocalDisassembly(const uint8_t *data, bool bigendian);
 bool PerformLocalDisassembly(const uint8_t *data, uint64_t addr, size_t &len, decomp_result* res, bool bigendian);
 
-extern "C" int powerpc_init(int);
-extern "C" void powerpc_release(void);
-extern "C" int powerpc_decompose(const uint8_t *data, int size, uint32_t addr, 
+extern "C" int sparc_init(int);
+extern "C" void sparc_release(void);
+extern "C" int sparc_decompose(const uint8_t *data, int size, uint32_t addr, 
 	bool lil_end, struct decomp_result *result, bool is_64bit, int cs_mode);
-extern "C" int powerpc_disassemble(struct decomp_result *, char *buf, size_t len);
+extern "C" int sparc_disassemble(struct decomp_result *, char *buf, size_t len);
 
-extern "C" const char *powerpc_reg_to_str(uint32_t rid, int);
+extern "C" const char *sparc_reg_to_str(uint32_t rid, int);
 
