@@ -29,15 +29,9 @@ Then some helpers if you need them:
 //*****************************************************************************
 // structs and types
 //*****************************************************************************
-enum ppc_status_t {
+enum sparc_status_t {
     STATUS_ERROR_UNSPEC=-1, STATUS_SUCCESS=0, STATUS_UNDEF_INSTR
 };
-
-typedef enum ppc_insn_bn {
-	PPC_INS_BN_FCMPO = PPC_INS_ENDING+1,
-	PPC_INS_BN_XXPERMR,
-	PPC_INS_BN_ENDING
-} ppc_insn_bn;
 
 /* operand type */
 enum operand_type_t { REG, VAL, LABEL };
@@ -56,7 +50,7 @@ struct decomp_result
 		(this can be one of two handles opened for BE or LE disassembling) */
 	csh handle;
 
-    ppc_status_t status;
+    sparc_status_t status;
 
 	cs_insn insn;
 	cs_detail detail;

@@ -72,7 +72,6 @@ int main(int ac, char **av)
 	int rc = -1;
 	char buf[256];
 	int index;
-	char *disasm_cmd = 0;
 	int c;
 
 #define BATCH 10000000
@@ -88,22 +87,12 @@ int main(int ac, char **av)
 		}
 	}
 
-	if (optind >= ac)
-	{
-		usage();
-		goto cleanup;
-	}
-
-	disasm_cmd = av[optind];
-
 	sparc_init(cs_mode_local);
 
 	printf("REPL mode!\n");
 	printf("example inputs (write the words as if after endian fetch):\n");
-	printf("93e1fffc\n");
-	printf("9421ffe0\n");
-	printf("7c3fb380\n");
-	printf("38a00000\n");
+	printf("0240a080\n");
+	printf("0860c285\n");
 	while (1)
 	{
 		printf("disassemble> ");

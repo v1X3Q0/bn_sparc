@@ -28,8 +28,8 @@ Steps:
 
 4. Run `make` to compile the plugin.
 
-The plugin can be found in the root of the build directory as `libarch_ppc.so`,
-`libarch_ppc.dylib` or `arch_ppc.dll` depending on your platform.
+The plugin can be found in the root of the build directory as `libarch_sparc.so`,
+`libarch_sparc.dylib` or `arch_sparc.dll` depending on your platform.
 
 To install the plugin, first launch Binary Ninja and uncheck the "PowerPC architecture plugin"
 option in the "Core Plugins" section. This will cause Binary Ninja to stop loading the
