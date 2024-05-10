@@ -2073,24 +2073,40 @@ extern "C"
 		Architecture* sparco = new SparcArchitecture("sparc", BigEndian);
 		Architecture::Register(sparco);
 
+		Architecture* sparc9 = new SparcArchitecture("sparc", BigEndian, 4, CS_MODE_V9);
+		Architecture::Register(sparc9);
+
 		/* calling conventions */
 		Ref<CallingConvention> conv;
 		conv = new SparcSWCallingConvention(sparco);
 		sparco->RegisterCallingConvention(conv);
 		sparco->SetDefaultCallingConvention(conv);
+		sparc9->RegisterCallingConvention(conv);
+		sparc9->SetDefaultCallingConvention(conv);
 		conv = new SparcLinuxSyscallCallingConvention(sparco);
 		sparco->RegisterCallingConvention(conv);
+		sparc9->RegisterCallingConvention(conv);
 
 		/* function recognizer */
 		sparco->RegisterFunctionRecognizer(new SparcImportedFunctionRecognizer());
+		sparc9->RegisterFunctionRecognizer(new SparcImportedFunctionRecognizer());
 
 		sparco->RegisterRelocationHandler("ELF", new SparcElfRelocationHandler());
+		sparc9->RegisterRelocationHandler("ELF", new SparcElfRelocationHandler());
 
 		/* for e_machine field in Elf32_Ehdr */
 		#define EM_SPARC 0x02
+		#define EM_SPARC9 0x2b
 		BinaryViewType::RegisterArchitecture(
 			"ELF", /* name of the binary view type */
 			EM_SPARC, /* id (key in m_arch map) */
+			BigEndian,
+			sparco /* the architecture */
+		);
+
+		BinaryViewType::RegisterArchitecture(
+			"ELF", /* name of the binary view type */
+			EM_SPARC9, /* id (key in m_arch map) */
 			BigEndian,
 			sparco /* the architecture */
 		);
