@@ -78,10 +78,13 @@ int main(int ac, char **av)
 #define BATCH 10000000
 	opterr = 0;
 
-	while ((c = getopt(ac, av, "")) != -1)
+	while ((c = getopt(ac, av, "n")) != -1)
 	{
 		switch (c)
 		{
+		case 'n':
+			cs_mode_local = CS_MODE_V9;
+			break;
 		default:
 			usage();
 			goto cleanup;
