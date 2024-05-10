@@ -1,4 +1,4 @@
-# ppc-capstone
+# sparc-capstone
 This is a sparc architecture plugin for Binary Ninja.
 
 ## This Repo Demonstrates
@@ -31,7 +31,7 @@ Steps:
 The plugin can be found in the root of the build directory as `libarch_sparc.so`,
 `libarch_sparc.dylib` or `arch_sparc.dll` depending on your platform.
 
-To install the plugin, first launch Binary Ninja and uncheck the "PowerPC architecture plugin"
+To install the plugin, first launch Binary Ninja and uncheck the "Sparc architecture plugin"
 option in the "Core Plugins" section. This will cause Binary Ninja to stop loading the
 bundled plugin so that its replacement can be loaded. Once this is complete, you can copy
 the plugin into the user plugins directory (you can locate this by using the "Open Plugin Folder"
@@ -48,7 +48,7 @@ updates do not automatically uninstall your custom build.**
 Personal Binary Ninja users can test via the built in console:
 
 ```
->>> sys.path.append('C:/users/x/documents/binja/ppc-capstone') # Path directory containing test_lifting.py
+>>> sys.path.append('C:/users/x/documents/binja/sparc-capstone') # Path directory containing test_lifting.py
 >>> from importlib import reload
 >>> import test_lifting
 success!
