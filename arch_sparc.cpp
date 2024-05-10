@@ -191,6 +191,7 @@ class SparcArchitecture: public Architecture
 	{
 		struct decomp_result res;
 		struct cs_insn *insn = &(res.insn);
+		uint32_t target = 0;
 
 		//MYLOG("%s()\n", __func__);
 
@@ -226,7 +227,7 @@ class SparcArchitecture: public Architecture
 		case SPARC_INS_BRLZ:
 		case SPARC_INS_BRNZ:
 		case SPARC_INS_BRZ:
-			uint32_t target = raw_insn & 0x003fffff;
+			target = raw_insn & 0x003fffff;
 
 			if ((target >> 21) != 0)
 			{
@@ -247,7 +248,7 @@ class SparcArchitecture: public Architecture
 
 			break;
 		case SPARC_INS_CALL:
-			uint32_t target = raw_insn & 0x3fffffff;
+			target = raw_insn & 0x3fffffff;
 
 			if ((target >> 29) != 0)
 			{
@@ -260,6 +261,7 @@ class SparcArchitecture: public Architecture
 
 			break;
 		case SPARC_INS_JMP:
+			break;
 		}
 
 		switch(insn->id) {
@@ -349,7 +351,7 @@ class SparcArchitecture: public Architecture
 		result.emplace_back(TextToken, buf);
 
 		/* operands */
-		for (int i = 0; i < sparc->op_count; ++i)
+		for (int i = 0; i < sparco->op_count; ++i)
 		{
 			struct cs_sparc_op *op = &(sparco->operands[i]);
 
@@ -377,7 +379,7 @@ class SparcArchitecture: public Architecture
 					result.emplace_back(CodeRelativeAddressToken, buf, (uint32_t)op->imm, 4);
 					break;
 				// intended to be for instructions with immediates, addis or something
-				case SPARC_INS_ADD
+				case SPARC_INS_ADD:
 					snprintf(buf, sizeof(buf), "0x%x", (uint16_t)op->imm);
 					result.emplace_back(IntegerToken, buf, (uint16_t)op->imm, 4);
 					break;
@@ -405,7 +407,7 @@ class SparcArchitecture: public Architecture
 				result.emplace_back(TextToken, "???");
 			}
 
-			if (i < ppc->op_count - 1)
+			if (i < sparco->op_count - 1)
 			{
 				// MYLOG("pushing a comma\n");
 				result.emplace_back(OperandSeparatorToken, ", ");
@@ -453,164 +455,164 @@ class SparcArchitecture: public Architecture
 		return rc;
 	}
 
-	virtual size_t GetFlagWriteLowLevelIL(BNLowLevelILOperation op, size_t size, uint32_t flagWriteType,
-		uint32_t flag, BNRegisterOrConstant* operands, size_t operandCount, LowLevelILFunction& il) override
-	{
-		MYLOG("%s()\n", __func__);
+	// virtual size_t GetFlagWriteLowLevelIL(BNLowLevelILOperation op, size_t size, uint32_t flagWriteType,
+	// 	uint32_t flag, BNRegisterOrConstant* operands, size_t operandCount, LowLevelILFunction& il) override
+	// {
+	// 	MYLOG("%s()\n", __func__);
 
-		bool signedWrite = true;
-		ExprId left, right;
+	// 	bool signedWrite = true;
+	// 	ExprId left, right;
 
-		switch (flagWriteType)
-		{
-			case IL_FLAGWRITE_CR0_U:
-			case IL_FLAGWRITE_CR1_U:
-			case IL_FLAGWRITE_CR2_U:
-			case IL_FLAGWRITE_CR3_U:
-			case IL_FLAGWRITE_CR4_U:
-			case IL_FLAGWRITE_CR5_U:
-			case IL_FLAGWRITE_CR6_U:
-			case IL_FLAGWRITE_CR7_U:
-				signedWrite = false;
-				break;
+	// 	switch (flagWriteType)
+	// 	{
+	// 		case IL_FLAGWRITE_CR0_U:
+	// 		case IL_FLAGWRITE_CR1_U:
+	// 		case IL_FLAGWRITE_CR2_U:
+	// 		case IL_FLAGWRITE_CR3_U:
+	// 		case IL_FLAGWRITE_CR4_U:
+	// 		case IL_FLAGWRITE_CR5_U:
+	// 		case IL_FLAGWRITE_CR6_U:
+	// 		case IL_FLAGWRITE_CR7_U:
+	// 			signedWrite = false;
+	// 			break;
 
-			case IL_FLAGWRITE_MTCR0:
-			case IL_FLAGWRITE_MTCR1:
-			case IL_FLAGWRITE_MTCR2:
-			case IL_FLAGWRITE_MTCR3:
-			case IL_FLAGWRITE_MTCR4:
-			case IL_FLAGWRITE_MTCR5:
-			case IL_FLAGWRITE_MTCR6:
-			case IL_FLAGWRITE_MTCR7:
-				return il.TestBit(4, il.GetExprForRegisterOrConstant(operands[0], 4), il.Const(4, 31u - flag));
+	// 		case IL_FLAGWRITE_MTCR0:
+	// 		case IL_FLAGWRITE_MTCR1:
+	// 		case IL_FLAGWRITE_MTCR2:
+	// 		case IL_FLAGWRITE_MTCR3:
+	// 		case IL_FLAGWRITE_MTCR4:
+	// 		case IL_FLAGWRITE_MTCR5:
+	// 		case IL_FLAGWRITE_MTCR6:
+	// 		case IL_FLAGWRITE_MTCR7:
+	// 			return il.TestBit(4, il.GetExprForRegisterOrConstant(operands[0], 4), il.Const(4, 31u - flag));
 
-			case IL_FLAGWRITE_INVL0:
-			case IL_FLAGWRITE_INVL1:
-			case IL_FLAGWRITE_INVL2:
-			case IL_FLAGWRITE_INVL3:
-			case IL_FLAGWRITE_INVL4:
-			case IL_FLAGWRITE_INVL5:
-			case IL_FLAGWRITE_INVL6:
-			case IL_FLAGWRITE_INVL7:
-			case IL_FLAGWRITE_INVALL:
-				return il.Unimplemented();
-		}
+	// 		case IL_FLAGWRITE_INVL0:
+	// 		case IL_FLAGWRITE_INVL1:
+	// 		case IL_FLAGWRITE_INVL2:
+	// 		case IL_FLAGWRITE_INVL3:
+	// 		case IL_FLAGWRITE_INVL4:
+	// 		case IL_FLAGWRITE_INVL5:
+	// 		case IL_FLAGWRITE_INVL6:
+	// 		case IL_FLAGWRITE_INVL7:
+	// 		case IL_FLAGWRITE_INVALL:
+	// 			return il.Unimplemented();
+	// 	}
 
-		auto liftOps = [&]() {
-			if ((op == LLIL_SUB) || (op == LLIL_FSUB))
-			{
-				left = il.GetExprForRegisterOrConstant(operands[0], size);
-				right = il.GetExprForRegisterOrConstant(operands[1], size);
-			}
-			else
-			{
-				left = il.GetExprForRegisterOrConstantOperation(op, size, operands, operandCount);
-				right = il.Const(size, 0);
-			}
-		};
+	// 	auto liftOps = [&]() {
+	// 		if ((op == LLIL_SUB) || (op == LLIL_FSUB))
+	// 		{
+	// 			left = il.GetExprForRegisterOrConstant(operands[0], size);
+	// 			right = il.GetExprForRegisterOrConstant(operands[1], size);
+	// 		}
+	// 		else
+	// 		{
+	// 			left = il.GetExprForRegisterOrConstantOperation(op, size, operands, operandCount);
+	// 			right = il.Const(size, 0);
+	// 		}
+	// 	};
 
-		switch (flag)
-		{
-			case IL_FLAG_XER_CA:
-				if (op == LLIL_ASR)
-				{
-					ExprId maskExpr;
+	// 	switch (flag)
+	// 	{
+	// 		case IL_FLAG_XER_CA:
+	// 			if (op == LLIL_ASR)
+	// 			{
+	// 				ExprId maskExpr;
 
-					if (operands[1].constant)
-					{
-						uint32_t mask = (1 << operands[1].value) - 1;
-						if (!mask)
-							return il.Const(0, 0);
-						maskExpr = il.Const(size, mask);
-					}
-					else
-					{
-						maskExpr = il.GetExprForRegisterOrConstant(operands[1], size);
-						maskExpr = il.Sub(size,
-							il.ShiftLeft(size,
-								il.Const(size, 1),
-								maskExpr),
-							il.Const(size, 1)
-						);
-					}
+	// 				if (operands[1].constant)
+	// 				{
+	// 					uint32_t mask = (1 << operands[1].value) - 1;
+	// 					if (!mask)
+	// 						return il.Const(0, 0);
+	// 					maskExpr = il.Const(size, mask);
+	// 				}
+	// 				else
+	// 				{
+	// 					maskExpr = il.GetExprForRegisterOrConstant(operands[1], size);
+	// 					maskExpr = il.Sub(size,
+	// 						il.ShiftLeft(size,
+	// 							il.Const(size, 1),
+	// 							maskExpr),
+	// 						il.Const(size, 1)
+	// 					);
+	// 				}
 
-					return il.And(0,
-						il.CompareSignedLessThan(size,
-							il.GetExprForRegisterOrConstant(operands[0], size),
-							il.Const(size, 0)
-						),
-						il.CompareNotEqual(size,
-							il.And(size,
-								il.GetExprForRegisterOrConstant(operands[0], size),
-								maskExpr),
-							il.Const(size, 0)
-						)
-					);
-				}
-				break;
-			case IL_FLAG_LT:
-			case IL_FLAG_LT_1:
-			case IL_FLAG_LT_2:
-			case IL_FLAG_LT_3:
-			case IL_FLAG_LT_4:
-			case IL_FLAG_LT_5:
-			case IL_FLAG_LT_6:
-			case IL_FLAG_LT_7:
-				liftOps();
+	// 				return il.And(0,
+	// 					il.CompareSignedLessThan(size,
+	// 						il.GetExprForRegisterOrConstant(operands[0], size),
+	// 						il.Const(size, 0)
+	// 					),
+	// 					il.CompareNotEqual(size,
+	// 						il.And(size,
+	// 							il.GetExprForRegisterOrConstant(operands[0], size),
+	// 							maskExpr),
+	// 						il.Const(size, 0)
+	// 					)
+	// 				);
+	// 			}
+	// 			break;
+	// 		case IL_FLAG_LT:
+	// 		case IL_FLAG_LT_1:
+	// 		case IL_FLAG_LT_2:
+	// 		case IL_FLAG_LT_3:
+	// 		case IL_FLAG_LT_4:
+	// 		case IL_FLAG_LT_5:
+	// 		case IL_FLAG_LT_6:
+	// 		case IL_FLAG_LT_7:
+	// 			liftOps();
 
-				if (signedWrite)
-					return il.CompareSignedLessThan(size, left, right);
-				else
-					return il.CompareUnsignedLessThan(size, left, right);
+	// 			if (signedWrite)
+	// 				return il.CompareSignedLessThan(size, left, right);
+	// 			else
+	// 				return il.CompareUnsignedLessThan(size, left, right);
 
-			case IL_FLAG_GT:
-			case IL_FLAG_GT_1:
-			case IL_FLAG_GT_2:
-			case IL_FLAG_GT_3:
-			case IL_FLAG_GT_4:
-			case IL_FLAG_GT_5:
-			case IL_FLAG_GT_6:
-			case IL_FLAG_GT_7:
-				liftOps();
+	// 		case IL_FLAG_GT:
+	// 		case IL_FLAG_GT_1:
+	// 		case IL_FLAG_GT_2:
+	// 		case IL_FLAG_GT_3:
+	// 		case IL_FLAG_GT_4:
+	// 		case IL_FLAG_GT_5:
+	// 		case IL_FLAG_GT_6:
+	// 		case IL_FLAG_GT_7:
+	// 			liftOps();
 
-				if (signedWrite)
-					return il.CompareSignedGreaterThan(size, left, right);
-				else
-					return il.CompareUnsignedGreaterThan(size, left, right);
+	// 			if (signedWrite)
+	// 				return il.CompareSignedGreaterThan(size, left, right);
+	// 			else
+	// 				return il.CompareUnsignedGreaterThan(size, left, right);
 
-			case IL_FLAG_EQ:
-			case IL_FLAG_EQ_1:
-			case IL_FLAG_EQ_2:
-			case IL_FLAG_EQ_3:
-			case IL_FLAG_EQ_4:
-			case IL_FLAG_EQ_5:
-			case IL_FLAG_EQ_6:
-			case IL_FLAG_EQ_7:
-				liftOps();
-				return il.CompareEqual(size, left, right);
-		}
+	// 		case IL_FLAG_EQ:
+	// 		case IL_FLAG_EQ_1:
+	// 		case IL_FLAG_EQ_2:
+	// 		case IL_FLAG_EQ_3:
+	// 		case IL_FLAG_EQ_4:
+	// 		case IL_FLAG_EQ_5:
+	// 		case IL_FLAG_EQ_6:
+	// 		case IL_FLAG_EQ_7:
+	// 			liftOps();
+	// 			return il.CompareEqual(size, left, right);
+	// 	}
 
-		BNFlagRole role = GetFlagRole(flag, GetSemanticClassForFlagWriteType(flagWriteType));
-		return GetDefaultFlagWriteLowLevelIL(op, size, role, operands, operandCount, il);
-	}
+	// 	BNFlagRole role = GetFlagRole(flag, GetSemanticClassForFlagWriteType(flagWriteType));
+	// 	return GetDefaultFlagWriteLowLevelIL(op, size, role, operands, operandCount, il);
+	// }
 
 
-	virtual ExprId GetSemanticFlagGroupLowLevelIL(uint32_t semGroup, LowLevelILFunction& il) override
-	{
-		uint32_t flagBase = (semGroup / 10) * 4; // get to flags from the right cr
+	// virtual ExprId GetSemanticFlagGroupLowLevelIL(uint32_t semGroup, LowLevelILFunction& il) override
+	// {
+	// 	uint32_t flagBase = (semGroup / 10) * 4; // get to flags from the right cr
 
-		switch (semGroup % 10)
-		{
-			case IL_FLAGGROUP_CR0_LT: return il.Flag(flagBase + IL_FLAG_LT);
-			case IL_FLAGGROUP_CR0_LE: return il.Not(0, il.Flag(flagBase + IL_FLAG_GT));
-			case IL_FLAGGROUP_CR0_GT: return il.Flag(flagBase + IL_FLAG_GT);
-			case IL_FLAGGROUP_CR0_GE: return il.Not(0, il.Flag(flagBase + IL_FLAG_LT));
-			case IL_FLAGGROUP_CR0_EQ: return il.Flag(flagBase + IL_FLAG_EQ);
-			case IL_FLAGGROUP_CR0_NE: return il.Not(0, il.Flag(flagBase + IL_FLAG_EQ));
-		}
+	// 	switch (semGroup % 10)
+	// 	{
+	// 		case IL_FLAGGROUP_CR0_LT: return il.Flag(flagBase + IL_FLAG_LT);
+	// 		case IL_FLAGGROUP_CR0_LE: return il.Not(0, il.Flag(flagBase + IL_FLAG_GT));
+	// 		case IL_FLAGGROUP_CR0_GT: return il.Flag(flagBase + IL_FLAG_GT);
+	// 		case IL_FLAGGROUP_CR0_GE: return il.Not(0, il.Flag(flagBase + IL_FLAG_LT));
+	// 		case IL_FLAGGROUP_CR0_EQ: return il.Flag(flagBase + IL_FLAG_EQ);
+	// 		case IL_FLAGGROUP_CR0_NE: return il.Not(0, il.Flag(flagBase + IL_FLAG_EQ));
+	// 	}
 
-		return il.Unimplemented();
-	}
+	// 	return il.Unimplemented();
+	// }
 
 	virtual string GetRegisterName(uint32_t regId) override
 	{
@@ -635,531 +637,531 @@ class SparcArchitecture: public Architecture
 	/*
 		flag identifiers and names
 	*/
-	virtual vector<uint32_t> GetAllFlags() override
-	{
-		MYLOG("%s()\n", __func__);
-		return vector<uint32_t> {
-			IL_FLAG_LT, IL_FLAG_GT, IL_FLAG_EQ, IL_FLAG_SO,
-			IL_FLAG_LT_1, IL_FLAG_GT_1, IL_FLAG_EQ_1, IL_FLAG_SO_1,
-			IL_FLAG_LT_2, IL_FLAG_GT_2, IL_FLAG_EQ_2, IL_FLAG_SO_2,
-			IL_FLAG_LT_3, IL_FLAG_GT_3, IL_FLAG_EQ_3, IL_FLAG_SO_3,
-			IL_FLAG_LT_4, IL_FLAG_GT_4, IL_FLAG_EQ_4, IL_FLAG_SO_4,
-			IL_FLAG_LT_5, IL_FLAG_GT_5, IL_FLAG_EQ_5, IL_FLAG_SO_5,
-			IL_FLAG_LT_6, IL_FLAG_GT_6, IL_FLAG_EQ_6, IL_FLAG_SO_6,
-			IL_FLAG_LT_7, IL_FLAG_GT_7, IL_FLAG_EQ_7, IL_FLAG_SO_7,
-			IL_FLAG_XER_SO, IL_FLAG_XER_OV, IL_FLAG_XER_CA
-		};
-	}
+	// virtual vector<uint32_t> GetAllFlags() override
+	// {
+	// 	MYLOG("%s()\n", __func__);
+	// 	return vector<uint32_t> {
+	// 		IL_FLAG_LT, IL_FLAG_GT, IL_FLAG_EQ, IL_FLAG_SO,
+	// 		IL_FLAG_LT_1, IL_FLAG_GT_1, IL_FLAG_EQ_1, IL_FLAG_SO_1,
+	// 		IL_FLAG_LT_2, IL_FLAG_GT_2, IL_FLAG_EQ_2, IL_FLAG_SO_2,
+	// 		IL_FLAG_LT_3, IL_FLAG_GT_3, IL_FLAG_EQ_3, IL_FLAG_SO_3,
+	// 		IL_FLAG_LT_4, IL_FLAG_GT_4, IL_FLAG_EQ_4, IL_FLAG_SO_4,
+	// 		IL_FLAG_LT_5, IL_FLAG_GT_5, IL_FLAG_EQ_5, IL_FLAG_SO_5,
+	// 		IL_FLAG_LT_6, IL_FLAG_GT_6, IL_FLAG_EQ_6, IL_FLAG_SO_6,
+	// 		IL_FLAG_LT_7, IL_FLAG_GT_7, IL_FLAG_EQ_7, IL_FLAG_SO_7,
+	// 		IL_FLAG_XER_SO, IL_FLAG_XER_OV, IL_FLAG_XER_CA
+	// 	};
+	// }
 
-	virtual string GetFlagName(uint32_t flag) override
-	{
-		MYLOG("%s(%d)\n", __func__, flag);
+	// virtual string GetFlagName(uint32_t flag) override
+	// {
+	// 	MYLOG("%s(%d)\n", __func__, flag);
 
-		switch(flag) {
-			case IL_FLAG_LT: return "lt";
-			case IL_FLAG_GT: return "gt";
-			case IL_FLAG_EQ: return "eq";
-			case IL_FLAG_SO: return "so";
-			case IL_FLAG_LT_1: return "cr1_lt";
-			case IL_FLAG_GT_1: return "cr1_gt";
-			case IL_FLAG_EQ_1: return "cr1_eq";
-			case IL_FLAG_SO_1: return "cr1_so";
-			case IL_FLAG_LT_2: return "cr2_lt";
-			case IL_FLAG_GT_2: return "cr2_gt";
-			case IL_FLAG_EQ_2: return "cr2_eq";
-			case IL_FLAG_SO_2: return "cr2_so";
-			case IL_FLAG_LT_3: return "cr3_lt";
-			case IL_FLAG_GT_3: return "cr3_gt";
-			case IL_FLAG_EQ_3: return "cr3_eq";
-			case IL_FLAG_SO_3: return "cr3_so";
-			case IL_FLAG_LT_4: return "cr4_lt";
-			case IL_FLAG_GT_4: return "cr4_gt";
-			case IL_FLAG_EQ_4: return "cr4_eq";
-			case IL_FLAG_SO_4: return "cr4_so";
-			case IL_FLAG_LT_5: return "cr5_lt";
-			case IL_FLAG_GT_5: return "cr5_gt";
-			case IL_FLAG_EQ_5: return "cr5_eq";
-			case IL_FLAG_SO_5: return "cr5_so";
-			case IL_FLAG_LT_6: return "cr6_lt";
-			case IL_FLAG_GT_6: return "cr6_gt";
-			case IL_FLAG_EQ_6: return "cr6_eq";
-			case IL_FLAG_SO_6: return "cr6_so";
-			case IL_FLAG_LT_7: return "cr7_lt";
-			case IL_FLAG_GT_7: return "cr7_gt";
-			case IL_FLAG_EQ_7: return "cr7_eq";
-			case IL_FLAG_SO_7: return "cr7_so";
-			case IL_FLAG_XER_SO: return "xer_so";
-			case IL_FLAG_XER_OV: return "xer_ov";
-			case IL_FLAG_XER_CA: return "xer_ca";
-			default: return "ERR_FLAG_NAME";
-		}
-	}
+	// 	switch(flag) {
+	// 		case IL_FLAG_LT: return "lt";
+	// 		case IL_FLAG_GT: return "gt";
+	// 		case IL_FLAG_EQ: return "eq";
+	// 		case IL_FLAG_SO: return "so";
+	// 		case IL_FLAG_LT_1: return "cr1_lt";
+	// 		case IL_FLAG_GT_1: return "cr1_gt";
+	// 		case IL_FLAG_EQ_1: return "cr1_eq";
+	// 		case IL_FLAG_SO_1: return "cr1_so";
+	// 		case IL_FLAG_LT_2: return "cr2_lt";
+	// 		case IL_FLAG_GT_2: return "cr2_gt";
+	// 		case IL_FLAG_EQ_2: return "cr2_eq";
+	// 		case IL_FLAG_SO_2: return "cr2_so";
+	// 		case IL_FLAG_LT_3: return "cr3_lt";
+	// 		case IL_FLAG_GT_3: return "cr3_gt";
+	// 		case IL_FLAG_EQ_3: return "cr3_eq";
+	// 		case IL_FLAG_SO_3: return "cr3_so";
+	// 		case IL_FLAG_LT_4: return "cr4_lt";
+	// 		case IL_FLAG_GT_4: return "cr4_gt";
+	// 		case IL_FLAG_EQ_4: return "cr4_eq";
+	// 		case IL_FLAG_SO_4: return "cr4_so";
+	// 		case IL_FLAG_LT_5: return "cr5_lt";
+	// 		case IL_FLAG_GT_5: return "cr5_gt";
+	// 		case IL_FLAG_EQ_5: return "cr5_eq";
+	// 		case IL_FLAG_SO_5: return "cr5_so";
+	// 		case IL_FLAG_LT_6: return "cr6_lt";
+	// 		case IL_FLAG_GT_6: return "cr6_gt";
+	// 		case IL_FLAG_EQ_6: return "cr6_eq";
+	// 		case IL_FLAG_SO_6: return "cr6_so";
+	// 		case IL_FLAG_LT_7: return "cr7_lt";
+	// 		case IL_FLAG_GT_7: return "cr7_gt";
+	// 		case IL_FLAG_EQ_7: return "cr7_eq";
+	// 		case IL_FLAG_SO_7: return "cr7_so";
+	// 		case IL_FLAG_XER_SO: return "xer_so";
+	// 		case IL_FLAG_XER_OV: return "xer_ov";
+	// 		case IL_FLAG_XER_CA: return "xer_ca";
+	// 		default: return "ERR_FLAG_NAME";
+	// 	}
+	// }
 
 	/*
 		flag write types
 	*/
-	virtual vector<uint32_t> GetAllFlagWriteTypes() override
-	{
-		return vector<uint32_t> {
-			IL_FLAGWRITE_NONE,
+	// virtual vector<uint32_t> GetAllFlagWriteTypes() override
+	// {
+	// 	return vector<uint32_t> {
+	// 		IL_FLAGWRITE_NONE,
 
-			IL_FLAGWRITE_CR0_S, IL_FLAGWRITE_CR1_S, IL_FLAGWRITE_CR2_S, IL_FLAGWRITE_CR3_S,
-			IL_FLAGWRITE_CR4_S, IL_FLAGWRITE_CR5_S, IL_FLAGWRITE_CR6_S, IL_FLAGWRITE_CR7_S,
+	// 		IL_FLAGWRITE_CR0_S, IL_FLAGWRITE_CR1_S, IL_FLAGWRITE_CR2_S, IL_FLAGWRITE_CR3_S,
+	// 		IL_FLAGWRITE_CR4_S, IL_FLAGWRITE_CR5_S, IL_FLAGWRITE_CR6_S, IL_FLAGWRITE_CR7_S,
 
-			IL_FLAGWRITE_CR0_U, IL_FLAGWRITE_CR1_U, IL_FLAGWRITE_CR2_U, IL_FLAGWRITE_CR3_U,
-			IL_FLAGWRITE_CR4_U, IL_FLAGWRITE_CR5_U, IL_FLAGWRITE_CR6_U, IL_FLAGWRITE_CR7_U,
+	// 		IL_FLAGWRITE_CR0_U, IL_FLAGWRITE_CR1_U, IL_FLAGWRITE_CR2_U, IL_FLAGWRITE_CR3_U,
+	// 		IL_FLAGWRITE_CR4_U, IL_FLAGWRITE_CR5_U, IL_FLAGWRITE_CR6_U, IL_FLAGWRITE_CR7_U,
 
-			IL_FLAGWRITE_XER, IL_FLAGWRITE_XER_CA, IL_FLAGWRITE_XER_OV_SO,
+	// 		IL_FLAGWRITE_XER, IL_FLAGWRITE_XER_CA, IL_FLAGWRITE_XER_OV_SO,
 
-			IL_FLAGWRITE_MTCR0, IL_FLAGWRITE_MTCR1, IL_FLAGWRITE_MTCR2, IL_FLAGWRITE_MTCR3,
-			IL_FLAGWRITE_MTCR4, IL_FLAGWRITE_MTCR5, IL_FLAGWRITE_MTCR6, IL_FLAGWRITE_MTCR7,
+	// 		IL_FLAGWRITE_MTCR0, IL_FLAGWRITE_MTCR1, IL_FLAGWRITE_MTCR2, IL_FLAGWRITE_MTCR3,
+	// 		IL_FLAGWRITE_MTCR4, IL_FLAGWRITE_MTCR5, IL_FLAGWRITE_MTCR6, IL_FLAGWRITE_MTCR7,
 
-			IL_FLAGWRITE_INVL0, IL_FLAGWRITE_INVL1, IL_FLAGWRITE_INVL2, IL_FLAGWRITE_INVL3,
-			IL_FLAGWRITE_INVL4, IL_FLAGWRITE_INVL5, IL_FLAGWRITE_INVL6, IL_FLAGWRITE_INVL7,
+	// 		IL_FLAGWRITE_INVL0, IL_FLAGWRITE_INVL1, IL_FLAGWRITE_INVL2, IL_FLAGWRITE_INVL3,
+	// 		IL_FLAGWRITE_INVL4, IL_FLAGWRITE_INVL5, IL_FLAGWRITE_INVL6, IL_FLAGWRITE_INVL7,
 
-			IL_FLAGWRITE_INVALL
-		};
-	}
+	// 		IL_FLAGWRITE_INVALL
+	// 	};
+	// }
 
-	virtual string GetFlagWriteTypeName(uint32_t writeType) override
-	{
-		MYLOG("%s(%d)\n", __func__, writeType);
+	// virtual string GetFlagWriteTypeName(uint32_t writeType) override
+	// {
+	// 	MYLOG("%s(%d)\n", __func__, writeType);
 
-		switch (writeType)
-		{
-			case IL_FLAGWRITE_CR0_S:
-				return "cr0_signed";
-			case IL_FLAGWRITE_CR1_S:
-				return "cr1_signed";
-			case IL_FLAGWRITE_CR2_S:
-				return "cr2_signed";
-			case IL_FLAGWRITE_CR3_S:
-				return "cr3_signed";
-			case IL_FLAGWRITE_CR4_S:
-				return "cr4_signed";
-			case IL_FLAGWRITE_CR5_S:
-				return "cr5_signed";
-			case IL_FLAGWRITE_CR6_S:
-				return "cr6_signed";
-			case IL_FLAGWRITE_CR7_S:
-				return "cr7_signed";
+	// 	switch (writeType)
+	// 	{
+	// 		case IL_FLAGWRITE_CR0_S:
+	// 			return "cr0_signed";
+	// 		case IL_FLAGWRITE_CR1_S:
+	// 			return "cr1_signed";
+	// 		case IL_FLAGWRITE_CR2_S:
+	// 			return "cr2_signed";
+	// 		case IL_FLAGWRITE_CR3_S:
+	// 			return "cr3_signed";
+	// 		case IL_FLAGWRITE_CR4_S:
+	// 			return "cr4_signed";
+	// 		case IL_FLAGWRITE_CR5_S:
+	// 			return "cr5_signed";
+	// 		case IL_FLAGWRITE_CR6_S:
+	// 			return "cr6_signed";
+	// 		case IL_FLAGWRITE_CR7_S:
+	// 			return "cr7_signed";
 
-			case IL_FLAGWRITE_CR0_U:
-				return "cr0_unsigned";
-			case IL_FLAGWRITE_CR1_U:
-				return "cr1_unsigned";
-			case IL_FLAGWRITE_CR2_U:
-				return "cr2_unsigned";
-			case IL_FLAGWRITE_CR3_U:
-				return "cr3_unsigned";
-			case IL_FLAGWRITE_CR4_U:
-				return "cr4_unsigned";
-			case IL_FLAGWRITE_CR5_U:
-				return "cr5_unsigned";
-			case IL_FLAGWRITE_CR6_U:
-				return "cr6_unsigned";
-			case IL_FLAGWRITE_CR7_U:
-				return "cr7_unsigned";
+	// 		case IL_FLAGWRITE_CR0_U:
+	// 			return "cr0_unsigned";
+	// 		case IL_FLAGWRITE_CR1_U:
+	// 			return "cr1_unsigned";
+	// 		case IL_FLAGWRITE_CR2_U:
+	// 			return "cr2_unsigned";
+	// 		case IL_FLAGWRITE_CR3_U:
+	// 			return "cr3_unsigned";
+	// 		case IL_FLAGWRITE_CR4_U:
+	// 			return "cr4_unsigned";
+	// 		case IL_FLAGWRITE_CR5_U:
+	// 			return "cr5_unsigned";
+	// 		case IL_FLAGWRITE_CR6_U:
+	// 			return "cr6_unsigned";
+	// 		case IL_FLAGWRITE_CR7_U:
+	// 			return "cr7_unsigned";
 
-			case IL_FLAGWRITE_XER:
-				return "xer";
-			case IL_FLAGWRITE_XER_CA:
-				return "xer_ca";
-			case IL_FLAGWRITE_XER_OV_SO:
-				return "xer_ov_so";
+	// 		case IL_FLAGWRITE_XER:
+	// 			return "xer";
+	// 		case IL_FLAGWRITE_XER_CA:
+	// 			return "xer_ca";
+	// 		case IL_FLAGWRITE_XER_OV_SO:
+	// 			return "xer_ov_so";
 
-			case IL_FLAGWRITE_MTCR0:
-				return "mtcr0";
-			case IL_FLAGWRITE_MTCR1:
-				return "mtcr1";
-			case IL_FLAGWRITE_MTCR2:
-				return "mtcr2";
-			case IL_FLAGWRITE_MTCR3:
-				return "mtcr3";
-			case IL_FLAGWRITE_MTCR4:
-				return "mtcr4";
-			case IL_FLAGWRITE_MTCR5:
-				return "mtcr5";
-			case IL_FLAGWRITE_MTCR6:
-				return "mtcr6";
-			case IL_FLAGWRITE_MTCR7:
-				return "mtcr7";
+	// 		case IL_FLAGWRITE_MTCR0:
+	// 			return "mtcr0";
+	// 		case IL_FLAGWRITE_MTCR1:
+	// 			return "mtcr1";
+	// 		case IL_FLAGWRITE_MTCR2:
+	// 			return "mtcr2";
+	// 		case IL_FLAGWRITE_MTCR3:
+	// 			return "mtcr3";
+	// 		case IL_FLAGWRITE_MTCR4:
+	// 			return "mtcr4";
+	// 		case IL_FLAGWRITE_MTCR5:
+	// 			return "mtcr5";
+	// 		case IL_FLAGWRITE_MTCR6:
+	// 			return "mtcr6";
+	// 		case IL_FLAGWRITE_MTCR7:
+	// 			return "mtcr7";
 
-			case IL_FLAGWRITE_INVL0:
-				return "invl0";
-			case IL_FLAGWRITE_INVL1:
-				return "invl1";
-			case IL_FLAGWRITE_INVL2:
-				return "invl2";
-			case IL_FLAGWRITE_INVL3:
-				return "invl3";
-			case IL_FLAGWRITE_INVL4:
-				return "invl4";
-			case IL_FLAGWRITE_INVL5:
-				return "invl5";
-			case IL_FLAGWRITE_INVL6:
-				return "invl6";
-			case IL_FLAGWRITE_INVL7:
-				return "invl7";
+	// 		case IL_FLAGWRITE_INVL0:
+	// 			return "invl0";
+	// 		case IL_FLAGWRITE_INVL1:
+	// 			return "invl1";
+	// 		case IL_FLAGWRITE_INVL2:
+	// 			return "invl2";
+	// 		case IL_FLAGWRITE_INVL3:
+	// 			return "invl3";
+	// 		case IL_FLAGWRITE_INVL4:
+	// 			return "invl4";
+	// 		case IL_FLAGWRITE_INVL5:
+	// 			return "invl5";
+	// 		case IL_FLAGWRITE_INVL6:
+	// 			return "invl6";
+	// 		case IL_FLAGWRITE_INVL7:
+	// 			return "invl7";
 
-			case IL_FLAGWRITE_INVALL:
-				return "invall";
+	// 		case IL_FLAGWRITE_INVALL:
+	// 			return "invall";
 
-			default:
-				MYLOG("ERROR: unrecognized writeType\n");
-				return "none";
-		}
-	}
+	// 		default:
+	// 			MYLOG("ERROR: unrecognized writeType\n");
+	// 			return "none";
+	// 	}
+	// }
 
-	virtual vector<uint32_t> GetFlagsWrittenByFlagWriteType(uint32_t writeType) override
-	{
-		MYLOG("%s(%d)\n", __func__, writeType);
+	// virtual vector<uint32_t> GetFlagsWrittenByFlagWriteType(uint32_t writeType) override
+	// {
+	// 	MYLOG("%s(%d)\n", __func__, writeType);
 
-		switch (writeType)
-		{
-			case IL_FLAGWRITE_CR0_S:
-			case IL_FLAGWRITE_CR0_U:
-			case IL_FLAGWRITE_MTCR0:
-			case IL_FLAGWRITE_INVL0:
-				return vector<uint32_t> {
-					IL_FLAG_LT, IL_FLAG_GT, IL_FLAG_EQ, IL_FLAG_SO,
-				};
+	// 	switch (writeType)
+	// 	{
+	// 		case IL_FLAGWRITE_CR0_S:
+	// 		case IL_FLAGWRITE_CR0_U:
+	// 		case IL_FLAGWRITE_MTCR0:
+	// 		case IL_FLAGWRITE_INVL0:
+	// 			return vector<uint32_t> {
+	// 				IL_FLAG_LT, IL_FLAG_GT, IL_FLAG_EQ, IL_FLAG_SO,
+	// 			};
 
-			case IL_FLAGWRITE_CR1_S:
-			case IL_FLAGWRITE_CR1_U:
-			case IL_FLAGWRITE_MTCR1:
-			case IL_FLAGWRITE_INVL1:
-				return vector<uint32_t> {
-					IL_FLAG_LT_1, IL_FLAG_GT_1, IL_FLAG_EQ_1, IL_FLAG_SO_1,
-				};
+	// 		case IL_FLAGWRITE_CR1_S:
+	// 		case IL_FLAGWRITE_CR1_U:
+	// 		case IL_FLAGWRITE_MTCR1:
+	// 		case IL_FLAGWRITE_INVL1:
+	// 			return vector<uint32_t> {
+	// 				IL_FLAG_LT_1, IL_FLAG_GT_1, IL_FLAG_EQ_1, IL_FLAG_SO_1,
+	// 			};
 
-			case IL_FLAGWRITE_CR2_S:
-			case IL_FLAGWRITE_CR2_U:
-			case IL_FLAGWRITE_MTCR2:
-			case IL_FLAGWRITE_INVL2:
-				return vector<uint32_t> {
-					IL_FLAG_LT_2, IL_FLAG_GT_2, IL_FLAG_EQ_2, IL_FLAG_SO_2,
-				};
+	// 		case IL_FLAGWRITE_CR2_S:
+	// 		case IL_FLAGWRITE_CR2_U:
+	// 		case IL_FLAGWRITE_MTCR2:
+	// 		case IL_FLAGWRITE_INVL2:
+	// 			return vector<uint32_t> {
+	// 				IL_FLAG_LT_2, IL_FLAG_GT_2, IL_FLAG_EQ_2, IL_FLAG_SO_2,
+	// 			};
 
-			case IL_FLAGWRITE_CR3_S:
-			case IL_FLAGWRITE_CR3_U:
-			case IL_FLAGWRITE_MTCR3:
-			case IL_FLAGWRITE_INVL3:
-				return vector<uint32_t> {
-					IL_FLAG_LT_3, IL_FLAG_GT_3, IL_FLAG_EQ_3, IL_FLAG_SO_3,
-				};
+	// 		case IL_FLAGWRITE_CR3_S:
+	// 		case IL_FLAGWRITE_CR3_U:
+	// 		case IL_FLAGWRITE_MTCR3:
+	// 		case IL_FLAGWRITE_INVL3:
+	// 			return vector<uint32_t> {
+	// 				IL_FLAG_LT_3, IL_FLAG_GT_3, IL_FLAG_EQ_3, IL_FLAG_SO_3,
+	// 			};
 
-			case IL_FLAGWRITE_CR4_S:
-			case IL_FLAGWRITE_CR4_U:
-			case IL_FLAGWRITE_MTCR4:
-			case IL_FLAGWRITE_INVL4:
-				return vector<uint32_t> {
-					IL_FLAG_LT_4, IL_FLAG_GT_4, IL_FLAG_EQ_4, IL_FLAG_SO_4,
-				};
+	// 		case IL_FLAGWRITE_CR4_S:
+	// 		case IL_FLAGWRITE_CR4_U:
+	// 		case IL_FLAGWRITE_MTCR4:
+	// 		case IL_FLAGWRITE_INVL4:
+	// 			return vector<uint32_t> {
+	// 				IL_FLAG_LT_4, IL_FLAG_GT_4, IL_FLAG_EQ_4, IL_FLAG_SO_4,
+	// 			};
 
-			case IL_FLAGWRITE_CR5_S:
-			case IL_FLAGWRITE_CR5_U:
-			case IL_FLAGWRITE_MTCR5:
-			case IL_FLAGWRITE_INVL5:
-				return vector<uint32_t> {
-					IL_FLAG_LT_5, IL_FLAG_GT_5, IL_FLAG_EQ_5, IL_FLAG_SO_5,
-				};
+	// 		case IL_FLAGWRITE_CR5_S:
+	// 		case IL_FLAGWRITE_CR5_U:
+	// 		case IL_FLAGWRITE_MTCR5:
+	// 		case IL_FLAGWRITE_INVL5:
+	// 			return vector<uint32_t> {
+	// 				IL_FLAG_LT_5, IL_FLAG_GT_5, IL_FLAG_EQ_5, IL_FLAG_SO_5,
+	// 			};
 
-			case IL_FLAGWRITE_CR6_S:
-			case IL_FLAGWRITE_CR6_U:
-			case IL_FLAGWRITE_MTCR6:
-			case IL_FLAGWRITE_INVL6:
-				return vector<uint32_t> {
-					IL_FLAG_LT_6, IL_FLAG_GT_6, IL_FLAG_EQ_6, IL_FLAG_SO_6,
-				};
+	// 		case IL_FLAGWRITE_CR6_S:
+	// 		case IL_FLAGWRITE_CR6_U:
+	// 		case IL_FLAGWRITE_MTCR6:
+	// 		case IL_FLAGWRITE_INVL6:
+	// 			return vector<uint32_t> {
+	// 				IL_FLAG_LT_6, IL_FLAG_GT_6, IL_FLAG_EQ_6, IL_FLAG_SO_6,
+	// 			};
 
-			case IL_FLAGWRITE_CR7_S:
-			case IL_FLAGWRITE_CR7_U:
-			case IL_FLAGWRITE_MTCR7:
-			case IL_FLAGWRITE_INVL7:
-				return vector<uint32_t> {
-					IL_FLAG_LT_7, IL_FLAG_GT_7, IL_FLAG_EQ_7, IL_FLAG_SO_7,
-				};
+	// 		case IL_FLAGWRITE_CR7_S:
+	// 		case IL_FLAGWRITE_CR7_U:
+	// 		case IL_FLAGWRITE_MTCR7:
+	// 		case IL_FLAGWRITE_INVL7:
+	// 			return vector<uint32_t> {
+	// 				IL_FLAG_LT_7, IL_FLAG_GT_7, IL_FLAG_EQ_7, IL_FLAG_SO_7,
+	// 			};
 
-			case IL_FLAGWRITE_XER:
-				return vector<uint32_t> {
-					IL_FLAG_XER_SO, IL_FLAG_XER_OV, IL_FLAG_XER_CA
-				};
+	// 		case IL_FLAGWRITE_XER:
+	// 			return vector<uint32_t> {
+	// 				IL_FLAG_XER_SO, IL_FLAG_XER_OV, IL_FLAG_XER_CA
+	// 			};
 
-			case IL_FLAGWRITE_XER_CA:
-				return vector<uint32_t> {
-					IL_FLAG_XER_CA
-				};
+	// 		case IL_FLAGWRITE_XER_CA:
+	// 			return vector<uint32_t> {
+	// 				IL_FLAG_XER_CA
+	// 			};
 
-			case IL_FLAGWRITE_XER_OV_SO:
-				return vector<uint32_t> {
-					IL_FLAG_XER_SO, IL_FLAG_XER_OV
-				};
+	// 		case IL_FLAGWRITE_XER_OV_SO:
+	// 			return vector<uint32_t> {
+	// 				IL_FLAG_XER_SO, IL_FLAG_XER_OV
+	// 			};
 
-			case IL_FLAGWRITE_INVALL:
-				return GetAllFlags();
+	// 		case IL_FLAGWRITE_INVALL:
+	// 			return GetAllFlags();
 
-			default:
-				return vector<uint32_t>();
-		}
-	}
-	virtual uint32_t GetSemanticClassForFlagWriteType(uint32_t writeType) override
-	{
-		switch (writeType)
-		{
-			case IL_FLAGWRITE_CR0_S: return IL_FLAGCLASS_CR0_S;
-			case IL_FLAGWRITE_CR0_U: return IL_FLAGCLASS_CR0_U;
-			case IL_FLAGWRITE_CR1_S: return IL_FLAGCLASS_CR1_S;
-			case IL_FLAGWRITE_CR1_U: return IL_FLAGCLASS_CR1_U;
-			case IL_FLAGWRITE_CR2_S: return IL_FLAGCLASS_CR2_S;
-			case IL_FLAGWRITE_CR2_U: return IL_FLAGCLASS_CR2_U;
-			case IL_FLAGWRITE_CR3_S: return IL_FLAGCLASS_CR3_S;
-			case IL_FLAGWRITE_CR3_U: return IL_FLAGCLASS_CR3_U;
-			case IL_FLAGWRITE_CR4_S: return IL_FLAGCLASS_CR4_S;
-			case IL_FLAGWRITE_CR4_U: return IL_FLAGCLASS_CR4_U;
-			case IL_FLAGWRITE_CR5_S: return IL_FLAGCLASS_CR5_S;
-			case IL_FLAGWRITE_CR5_U: return IL_FLAGCLASS_CR5_U;
-			case IL_FLAGWRITE_CR6_S: return IL_FLAGCLASS_CR6_S;
-			case IL_FLAGWRITE_CR6_U: return IL_FLAGCLASS_CR6_U;
-			case IL_FLAGWRITE_CR7_S: return IL_FLAGCLASS_CR7_S;
-			case IL_FLAGWRITE_CR7_U: return IL_FLAGCLASS_CR7_U;
-		}
+	// 		default:
+	// 			return vector<uint32_t>();
+	// 	}
+	// }
+	// virtual uint32_t GetSemanticClassForFlagWriteType(uint32_t writeType) override
+	// {
+	// 	switch (writeType)
+	// 	{
+	// 		case IL_FLAGWRITE_CR0_S: return IL_FLAGCLASS_CR0_S;
+	// 		case IL_FLAGWRITE_CR0_U: return IL_FLAGCLASS_CR0_U;
+	// 		case IL_FLAGWRITE_CR1_S: return IL_FLAGCLASS_CR1_S;
+	// 		case IL_FLAGWRITE_CR1_U: return IL_FLAGCLASS_CR1_U;
+	// 		case IL_FLAGWRITE_CR2_S: return IL_FLAGCLASS_CR2_S;
+	// 		case IL_FLAGWRITE_CR2_U: return IL_FLAGCLASS_CR2_U;
+	// 		case IL_FLAGWRITE_CR3_S: return IL_FLAGCLASS_CR3_S;
+	// 		case IL_FLAGWRITE_CR3_U: return IL_FLAGCLASS_CR3_U;
+	// 		case IL_FLAGWRITE_CR4_S: return IL_FLAGCLASS_CR4_S;
+	// 		case IL_FLAGWRITE_CR4_U: return IL_FLAGCLASS_CR4_U;
+	// 		case IL_FLAGWRITE_CR5_S: return IL_FLAGCLASS_CR5_S;
+	// 		case IL_FLAGWRITE_CR5_U: return IL_FLAGCLASS_CR5_U;
+	// 		case IL_FLAGWRITE_CR6_S: return IL_FLAGCLASS_CR6_S;
+	// 		case IL_FLAGWRITE_CR6_U: return IL_FLAGCLASS_CR6_U;
+	// 		case IL_FLAGWRITE_CR7_S: return IL_FLAGCLASS_CR7_S;
+	// 		case IL_FLAGWRITE_CR7_U: return IL_FLAGCLASS_CR7_U;
+	// 	}
 
-		return IL_FLAGCLASS_NONE;
-	}
+	// 	return IL_FLAGCLASS_NONE;
+	// }
 
 	/*
 		flag classes
 	*/
-	virtual vector<uint32_t> GetAllSemanticFlagClasses() override
-	{
-		return vector<uint32_t> {
-			IL_FLAGCLASS_NONE,
+	// virtual vector<uint32_t> GetAllSemanticFlagClasses() override
+	// {
+	// 	return vector<uint32_t> {
+	// 		IL_FLAGCLASS_NONE,
 
-			IL_FLAGCLASS_CR0_S, IL_FLAGCLASS_CR1_S, IL_FLAGCLASS_CR2_S, IL_FLAGCLASS_CR3_S,
-			IL_FLAGCLASS_CR4_S, IL_FLAGCLASS_CR5_S, IL_FLAGCLASS_CR6_S, IL_FLAGCLASS_CR7_S,
+	// 		IL_FLAGCLASS_CR0_S, IL_FLAGCLASS_CR1_S, IL_FLAGCLASS_CR2_S, IL_FLAGCLASS_CR3_S,
+	// 		IL_FLAGCLASS_CR4_S, IL_FLAGCLASS_CR5_S, IL_FLAGCLASS_CR6_S, IL_FLAGCLASS_CR7_S,
 
-			IL_FLAGCLASS_CR0_U, IL_FLAGCLASS_CR1_U, IL_FLAGCLASS_CR2_U, IL_FLAGCLASS_CR3_U,
-			IL_FLAGCLASS_CR4_U, IL_FLAGCLASS_CR5_U, IL_FLAGCLASS_CR6_U, IL_FLAGCLASS_CR7_U,
-		};
-	}
+	// 		IL_FLAGCLASS_CR0_U, IL_FLAGCLASS_CR1_U, IL_FLAGCLASS_CR2_U, IL_FLAGCLASS_CR3_U,
+	// 		IL_FLAGCLASS_CR4_U, IL_FLAGCLASS_CR5_U, IL_FLAGCLASS_CR6_U, IL_FLAGCLASS_CR7_U,
+	// 	};
+	// }
 
-	virtual std::string GetSemanticFlagClassName(uint32_t semClass) override
-	{
-		return GetFlagWriteTypeName(semClass);
-	}
+	// virtual std::string GetSemanticFlagClassName(uint32_t semClass) override
+	// {
+	// 	return GetFlagWriteTypeName(semClass);
+	// }
 
 	/*
 	   semantic flag groups
 	 */
-	virtual vector<uint32_t> GetAllSemanticFlagGroups() override
-	{
-		return vector<uint32_t> {
-			IL_FLAGGROUP_CR0_LT, IL_FLAGGROUP_CR0_LE, IL_FLAGGROUP_CR0_GT,
-			IL_FLAGGROUP_CR0_GE, IL_FLAGGROUP_CR0_EQ, IL_FLAGGROUP_CR0_NE,
-			IL_FLAGGROUP_CR1_LT, IL_FLAGGROUP_CR1_LE, IL_FLAGGROUP_CR1_GT,
-			IL_FLAGGROUP_CR1_GE, IL_FLAGGROUP_CR1_EQ, IL_FLAGGROUP_CR1_NE,
-			IL_FLAGGROUP_CR2_LT, IL_FLAGGROUP_CR2_LE, IL_FLAGGROUP_CR2_GT,
-			IL_FLAGGROUP_CR2_GE, IL_FLAGGROUP_CR2_EQ, IL_FLAGGROUP_CR2_NE,
-			IL_FLAGGROUP_CR3_LT, IL_FLAGGROUP_CR3_LE, IL_FLAGGROUP_CR3_GT,
-			IL_FLAGGROUP_CR3_GE, IL_FLAGGROUP_CR3_EQ, IL_FLAGGROUP_CR3_NE,
-			IL_FLAGGROUP_CR4_LT, IL_FLAGGROUP_CR4_LE, IL_FLAGGROUP_CR4_GT,
-			IL_FLAGGROUP_CR4_GE, IL_FLAGGROUP_CR4_EQ, IL_FLAGGROUP_CR4_NE,
-			IL_FLAGGROUP_CR5_LT, IL_FLAGGROUP_CR5_LE, IL_FLAGGROUP_CR5_GT,
-			IL_FLAGGROUP_CR5_GE, IL_FLAGGROUP_CR5_EQ, IL_FLAGGROUP_CR5_NE,
-			IL_FLAGGROUP_CR6_LT, IL_FLAGGROUP_CR6_LE, IL_FLAGGROUP_CR6_GT,
-			IL_FLAGGROUP_CR6_GE, IL_FLAGGROUP_CR6_EQ, IL_FLAGGROUP_CR6_NE,
-			IL_FLAGGROUP_CR7_LT, IL_FLAGGROUP_CR7_LE, IL_FLAGGROUP_CR7_GT,
-			IL_FLAGGROUP_CR7_GE, IL_FLAGGROUP_CR7_EQ, IL_FLAGGROUP_CR7_NE,
-		};
-	}
+	// virtual vector<uint32_t> GetAllSemanticFlagGroups() override
+	// {
+	// 	return vector<uint32_t> {
+	// 		IL_FLAGGROUP_CR0_LT, IL_FLAGGROUP_CR0_LE, IL_FLAGGROUP_CR0_GT,
+	// 		IL_FLAGGROUP_CR0_GE, IL_FLAGGROUP_CR0_EQ, IL_FLAGGROUP_CR0_NE,
+	// 		IL_FLAGGROUP_CR1_LT, IL_FLAGGROUP_CR1_LE, IL_FLAGGROUP_CR1_GT,
+	// 		IL_FLAGGROUP_CR1_GE, IL_FLAGGROUP_CR1_EQ, IL_FLAGGROUP_CR1_NE,
+	// 		IL_FLAGGROUP_CR2_LT, IL_FLAGGROUP_CR2_LE, IL_FLAGGROUP_CR2_GT,
+	// 		IL_FLAGGROUP_CR2_GE, IL_FLAGGROUP_CR2_EQ, IL_FLAGGROUP_CR2_NE,
+	// 		IL_FLAGGROUP_CR3_LT, IL_FLAGGROUP_CR3_LE, IL_FLAGGROUP_CR3_GT,
+	// 		IL_FLAGGROUP_CR3_GE, IL_FLAGGROUP_CR3_EQ, IL_FLAGGROUP_CR3_NE,
+	// 		IL_FLAGGROUP_CR4_LT, IL_FLAGGROUP_CR4_LE, IL_FLAGGROUP_CR4_GT,
+	// 		IL_FLAGGROUP_CR4_GE, IL_FLAGGROUP_CR4_EQ, IL_FLAGGROUP_CR4_NE,
+	// 		IL_FLAGGROUP_CR5_LT, IL_FLAGGROUP_CR5_LE, IL_FLAGGROUP_CR5_GT,
+	// 		IL_FLAGGROUP_CR5_GE, IL_FLAGGROUP_CR5_EQ, IL_FLAGGROUP_CR5_NE,
+	// 		IL_FLAGGROUP_CR6_LT, IL_FLAGGROUP_CR6_LE, IL_FLAGGROUP_CR6_GT,
+	// 		IL_FLAGGROUP_CR6_GE, IL_FLAGGROUP_CR6_EQ, IL_FLAGGROUP_CR6_NE,
+	// 		IL_FLAGGROUP_CR7_LT, IL_FLAGGROUP_CR7_LE, IL_FLAGGROUP_CR7_GT,
+	// 		IL_FLAGGROUP_CR7_GE, IL_FLAGGROUP_CR7_EQ, IL_FLAGGROUP_CR7_NE,
+	// 	};
+	// }
 
-	virtual std::string GetSemanticFlagGroupName(uint32_t semGroup) override
-	{
-		char name[32];
-		const char* suffix;
+	// virtual std::string GetSemanticFlagGroupName(uint32_t semGroup) override
+	// {
+	// 	char name[32];
+	// 	const char* suffix;
 
-		/* remove the cr part of the semGroup id from the equation */
-		switch (semGroup % 10)
-		{
-			case IL_FLAGGROUP_CR0_LT: suffix = "lt"; break;
-			case IL_FLAGGROUP_CR0_LE: suffix = "le"; break;
-			case IL_FLAGGROUP_CR0_GT: suffix = "gt"; break;
-			case IL_FLAGGROUP_CR0_GE: suffix = "ge"; break;
-			case IL_FLAGGROUP_CR0_EQ: suffix = "eq"; break;
-			case IL_FLAGGROUP_CR0_NE: suffix = "ne"; break;
-			default: suffix = "invalid"; break;
-		}
+	// 	/* remove the cr part of the semGroup id from the equation */
+	// 	switch (semGroup % 10)
+	// 	{
+	// 		case IL_FLAGGROUP_CR0_LT: suffix = "lt"; break;
+	// 		case IL_FLAGGROUP_CR0_LE: suffix = "le"; break;
+	// 		case IL_FLAGGROUP_CR0_GT: suffix = "gt"; break;
+	// 		case IL_FLAGGROUP_CR0_GE: suffix = "ge"; break;
+	// 		case IL_FLAGGROUP_CR0_EQ: suffix = "eq"; break;
+	// 		case IL_FLAGGROUP_CR0_NE: suffix = "ne"; break;
+	// 		default: suffix = "invalid"; break;
+	// 	}
 
-		snprintf(name, sizeof(name), "cr%d_%s", semGroup / 10, suffix);
+	// 	snprintf(name, sizeof(name), "cr%d_%s", semGroup / 10, suffix);
 
-		return std::string(name);
-	}
+	// 	return std::string(name);
+	// }
 
-	virtual std::vector<uint32_t> GetFlagsRequiredForSemanticFlagGroup(uint32_t semGroup) override
-	{
-		uint32_t flag = IL_FLAG_LT + ((semGroup / 10) * 4); // get to flags from the right cr
-		flag += ((semGroup % 10) / 2);
+	// virtual std::vector<uint32_t> GetFlagsRequiredForSemanticFlagGroup(uint32_t semGroup) override
+	// {
+	// 	uint32_t flag = IL_FLAG_LT + ((semGroup / 10) * 4); // get to flags from the right cr
+	// 	flag += ((semGroup % 10) / 2);
 
-		return { flag };
-	}
+	// 	return { flag };
+	// }
 
-	virtual std::map<uint32_t, BNLowLevelILFlagCondition> GetFlagConditionsForSemanticFlagGroup(uint32_t semGroup) override
-	{
-		uint32_t flagClassBase = IL_FLAGCLASS_CR0_S + ((semGroup / 10) * 2);
-		uint32_t groupType = semGroup % 10;
+	// virtual std::map<uint32_t, BNLowLevelILFlagCondition> GetFlagConditionsForSemanticFlagGroup(uint32_t semGroup) override
+	// {
+	// 	uint32_t flagClassBase = IL_FLAGCLASS_CR0_S + ((semGroup / 10) * 2);
+	// 	uint32_t groupType = semGroup % 10;
 
-		switch (groupType)
-		{
-		case IL_FLAGGROUP_CR0_LT:
-			return map<uint32_t, BNLowLevelILFlagCondition> {
-				{flagClassBase    , LLFC_SLT},
-				{flagClassBase + 1, LLFC_ULT}
-			};
-		case IL_FLAGGROUP_CR0_LE:
-			return map<uint32_t, BNLowLevelILFlagCondition> {
-				{flagClassBase    , LLFC_SLE},
-				{flagClassBase + 1, LLFC_ULE}
-			};
-		case IL_FLAGGROUP_CR0_GT:
-			return map<uint32_t, BNLowLevelILFlagCondition> {
-				{flagClassBase    , LLFC_SGT},
-				{flagClassBase + 1, LLFC_UGT}
-			};
-		case IL_FLAGGROUP_CR0_GE:
-			return map<uint32_t, BNLowLevelILFlagCondition> {
-				{flagClassBase    , LLFC_SGE},
-				{flagClassBase + 1, LLFC_UGE}
-			};
-		case IL_FLAGGROUP_CR0_EQ:
-			return map<uint32_t, BNLowLevelILFlagCondition> {
-				{flagClassBase    , LLFC_E},
-				{flagClassBase + 1, LLFC_E}
-			};
-		case IL_FLAGGROUP_CR0_NE:
-			return map<uint32_t, BNLowLevelILFlagCondition> {
-				{flagClassBase    , LLFC_NE},
-				{flagClassBase + 1, LLFC_NE}
-			};
-		default:
-			return map<uint32_t, BNLowLevelILFlagCondition>();
-		}
-	}
+	// 	switch (groupType)
+	// 	{
+	// 	case IL_FLAGGROUP_CR0_LT:
+	// 		return map<uint32_t, BNLowLevelILFlagCondition> {
+	// 			{flagClassBase    , LLFC_SLT},
+	// 			{flagClassBase + 1, LLFC_ULT}
+	// 		};
+	// 	case IL_FLAGGROUP_CR0_LE:
+	// 		return map<uint32_t, BNLowLevelILFlagCondition> {
+	// 			{flagClassBase    , LLFC_SLE},
+	// 			{flagClassBase + 1, LLFC_ULE}
+	// 		};
+	// 	case IL_FLAGGROUP_CR0_GT:
+	// 		return map<uint32_t, BNLowLevelILFlagCondition> {
+	// 			{flagClassBase    , LLFC_SGT},
+	// 			{flagClassBase + 1, LLFC_UGT}
+	// 		};
+	// 	case IL_FLAGGROUP_CR0_GE:
+	// 		return map<uint32_t, BNLowLevelILFlagCondition> {
+	// 			{flagClassBase    , LLFC_SGE},
+	// 			{flagClassBase + 1, LLFC_UGE}
+	// 		};
+	// 	case IL_FLAGGROUP_CR0_EQ:
+	// 		return map<uint32_t, BNLowLevelILFlagCondition> {
+	// 			{flagClassBase    , LLFC_E},
+	// 			{flagClassBase + 1, LLFC_E}
+	// 		};
+	// 	case IL_FLAGGROUP_CR0_NE:
+	// 		return map<uint32_t, BNLowLevelILFlagCondition> {
+	// 			{flagClassBase    , LLFC_NE},
+	// 			{flagClassBase + 1, LLFC_NE}
+	// 		};
+	// 	default:
+	// 		return map<uint32_t, BNLowLevelILFlagCondition>();
+	// 	}
+	// }
 
 	/*
 		flag roles
 	*/
 
-	virtual BNFlagRole GetFlagRole(uint32_t flag, uint32_t semClass) override
-	{
-		MYLOG("%s(%d)\n", __func__, flag);
+	// virtual BNFlagRole GetFlagRole(uint32_t flag, uint32_t semClass) override
+	// {
+	// 	MYLOG("%s(%d)\n", __func__, flag);
 
-		bool signedClass = true;
+	// 	bool signedClass = true;
 
-		switch (semClass)
-		{
-			case IL_FLAGCLASS_CR0_U:
-			case IL_FLAGCLASS_CR1_U:
-			case IL_FLAGCLASS_CR2_U:
-			case IL_FLAGCLASS_CR3_U:
-			case IL_FLAGCLASS_CR4_U:
-			case IL_FLAGCLASS_CR5_U:
-			case IL_FLAGCLASS_CR6_U:
-			case IL_FLAGCLASS_CR7_U:
-				signedClass = false;
-		}
+	// 	switch (semClass)
+	// 	{
+	// 		case IL_FLAGCLASS_CR0_U:
+	// 		case IL_FLAGCLASS_CR1_U:
+	// 		case IL_FLAGCLASS_CR2_U:
+	// 		case IL_FLAGCLASS_CR3_U:
+	// 		case IL_FLAGCLASS_CR4_U:
+	// 		case IL_FLAGCLASS_CR5_U:
+	// 		case IL_FLAGCLASS_CR6_U:
+	// 		case IL_FLAGCLASS_CR7_U:
+	// 			signedClass = false;
+	// 	}
 
-		switch (flag)
-		{
-			case IL_FLAG_LT:
-			case IL_FLAG_LT_1:
-			case IL_FLAG_LT_2:
-			case IL_FLAG_LT_3:
-			case IL_FLAG_LT_4:
-			case IL_FLAG_LT_5:
-			case IL_FLAG_LT_6:
-			case IL_FLAG_LT_7:
-				return signedClass ? NegativeSignFlagRole : SpecialFlagRole;
-			case IL_FLAG_GT:
-			case IL_FLAG_GT_1:
-			case IL_FLAG_GT_2:
-			case IL_FLAG_GT_3:
-			case IL_FLAG_GT_4:
-			case IL_FLAG_GT_5:
-			case IL_FLAG_GT_6:
-			case IL_FLAG_GT_7:
-				return SpecialFlagRole; // PositiveSignFlag is >=, not >
-			case IL_FLAG_EQ:
-			case IL_FLAG_EQ_1:
-			case IL_FLAG_EQ_2:
-			case IL_FLAG_EQ_3:
-			case IL_FLAG_EQ_4:
-			case IL_FLAG_EQ_5:
-			case IL_FLAG_EQ_6:
-			case IL_FLAG_EQ_7:
-				return ZeroFlagRole;
-			// case IL_FLAG_SO:
-			// case IL_FLAG_SO_1:
-			// case IL_FLAG_SO_2:
-			// case IL_FLAG_SO_3:
-			// case IL_FLAG_SO_4:
-			// case IL_FLAG_SO_5:
-			// case IL_FLAG_SO_6:
-			// case IL_FLAG_SO_7:
-			// case IL_FLAG_XER_SO:
-			case IL_FLAG_XER_OV:
-				return OverflowFlagRole;
-			case IL_FLAG_XER_CA:
-				return CarryFlagRole;
-			default:
-				return SpecialFlagRole;
-		}
-	}
+	// 	switch (flag)
+	// 	{
+	// 		case IL_FLAG_LT:
+	// 		case IL_FLAG_LT_1:
+	// 		case IL_FLAG_LT_2:
+	// 		case IL_FLAG_LT_3:
+	// 		case IL_FLAG_LT_4:
+	// 		case IL_FLAG_LT_5:
+	// 		case IL_FLAG_LT_6:
+	// 		case IL_FLAG_LT_7:
+	// 			return signedClass ? NegativeSignFlagRole : SpecialFlagRole;
+	// 		case IL_FLAG_GT:
+	// 		case IL_FLAG_GT_1:
+	// 		case IL_FLAG_GT_2:
+	// 		case IL_FLAG_GT_3:
+	// 		case IL_FLAG_GT_4:
+	// 		case IL_FLAG_GT_5:
+	// 		case IL_FLAG_GT_6:
+	// 		case IL_FLAG_GT_7:
+	// 			return SpecialFlagRole; // PositiveSignFlag is >=, not >
+	// 		case IL_FLAG_EQ:
+	// 		case IL_FLAG_EQ_1:
+	// 		case IL_FLAG_EQ_2:
+	// 		case IL_FLAG_EQ_3:
+	// 		case IL_FLAG_EQ_4:
+	// 		case IL_FLAG_EQ_5:
+	// 		case IL_FLAG_EQ_6:
+	// 		case IL_FLAG_EQ_7:
+	// 			return ZeroFlagRole;
+	// 		// case IL_FLAG_SO:
+	// 		// case IL_FLAG_SO_1:
+	// 		// case IL_FLAG_SO_2:
+	// 		// case IL_FLAG_SO_3:
+	// 		// case IL_FLAG_SO_4:
+	// 		// case IL_FLAG_SO_5:
+	// 		// case IL_FLAG_SO_6:
+	// 		// case IL_FLAG_SO_7:
+	// 		// case IL_FLAG_XER_SO:
+	// 		case IL_FLAG_XER_OV:
+	// 			return OverflowFlagRole;
+	// 		case IL_FLAG_XER_CA:
+	// 			return CarryFlagRole;
+	// 		default:
+	// 			return SpecialFlagRole;
+	// 	}
+	// }
 
 	/*
 		flag conditions -> set of flags
 		LLFC is "low level flag condition"
 	*/
-	virtual vector<uint32_t> GetFlagsRequiredForFlagCondition(BNLowLevelILFlagCondition cond, uint32_t) override
-	{
-		MYLOG("%s(%d)\n", __func__, cond);
+	// virtual vector<uint32_t> GetFlagsRequiredForFlagCondition(BNLowLevelILFlagCondition cond, uint32_t) override
+	// {
+	// 	MYLOG("%s(%d)\n", __func__, cond);
 
-		switch (cond)
-		{
-			case LLFC_E: /* equal */
-			case LLFC_NE: /* not equal */
-				return vector<uint32_t>{ IL_FLAG_EQ };
+	// 	switch (cond)
+	// 	{
+	// 		case LLFC_E: /* equal */
+	// 		case LLFC_NE: /* not equal */
+	// 			return vector<uint32_t>{ IL_FLAG_EQ };
 
-			case LLFC_ULT: /* (unsigned) less than == LT */
-			case LLFC_SLT: /* (signed) less than == LT */
-			case LLFC_SGE: /* (signed) greater-or-equal == !LT */
-			case LLFC_UGE: /* (unsigned) greater-or-equal == !LT */
-				return vector<uint32_t>{ IL_FLAG_LT };
+	// 		case LLFC_ULT: /* (unsigned) less than == LT */
+	// 		case LLFC_SLT: /* (signed) less than == LT */
+	// 		case LLFC_SGE: /* (signed) greater-or-equal == !LT */
+	// 		case LLFC_UGE: /* (unsigned) greater-or-equal == !LT */
+	// 			return vector<uint32_t>{ IL_FLAG_LT };
 
-			case LLFC_SGT: /* (signed) greater-than == GT */
-			case LLFC_UGT: /* (unsigned) greater-than == GT */
-			case LLFC_ULE: /* (unsigned) less-or-equal == !GT */
-			case LLFC_SLE: /* (signed) lesser-or-equal == !GT */
-				return vector<uint32_t>{ IL_FLAG_GT };
+	// 		case LLFC_SGT: /* (signed) greater-than == GT */
+	// 		case LLFC_UGT: /* (unsigned) greater-than == GT */
+	// 		case LLFC_ULE: /* (unsigned) less-or-equal == !GT */
+	// 		case LLFC_SLE: /* (signed) lesser-or-equal == !GT */
+	// 			return vector<uint32_t>{ IL_FLAG_GT };
 
-			case LLFC_NEG:
-			case LLFC_POS:
-				/* no ppc flags (that I'm aware of) indicate sign of result */
-				return vector<uint32_t>();
+	// 		case LLFC_NEG:
+	// 		case LLFC_POS:
+	// 			/* no ppc flags (that I'm aware of) indicate sign of result */
+	// 			return vector<uint32_t>();
 
-			case LLFC_O:
-			case LLFC_NO:
-				/* difficult:
-					crX: 8 signed sticky versions
-					XER: 1 unsigned sticky, 1 unsigned traditional */
-				return vector<uint32_t>{
-					IL_FLAG_XER_OV
-				};
+	// 		case LLFC_O:
+	// 		case LLFC_NO:
+	// 			/* difficult:
+	// 				crX: 8 signed sticky versions
+	// 				XER: 1 unsigned sticky, 1 unsigned traditional */
+	// 			return vector<uint32_t>{
+	// 				IL_FLAG_XER_OV
+	// 			};
 
-			default:
-				return vector<uint32_t>();
-		}
-	}
+	// 		default:
+	// 			return vector<uint32_t>();
+	// 	}
+	// }
 
 
 	/*************************************************************************/
@@ -1303,7 +1305,6 @@ class SparcArchitecture: public Architecture
 		case SPARC_REG_FCC1: return RegisterInfo(SPARC_REG_FCC1, 0, 4);
 		case SPARC_REG_FCC2: return RegisterInfo(SPARC_REG_FCC2, 0, 4);
 		case SPARC_REG_FCC3: return RegisterInfo(SPARC_REG_FCC3, 0, 4);
-		case SPARC_REG_FP: return RegisterInfo(SPARC_REG_FP, 0, 4);
 		case SPARC_REG_G0: return RegisterInfo(SPARC_REG_G0, 0, 4);
 		case SPARC_REG_G1: return RegisterInfo(SPARC_REG_G1, 0, 4);
 		case SPARC_REG_G2: return RegisterInfo(SPARC_REG_G2, 0, 4);
@@ -1362,35 +1363,35 @@ class SparcArchitecture: public Architecture
 
 	virtual bool CanAssemble() override
 	{
-		return true;
+		return false;
 	}
 
-	bool Assemble(const string &code, uint64_t addr, DataBuffer &result, string &errors) override
-	{
-		MYLOG("%s()\n", __func__);
+	// bool Assemble(const string &code, uint64_t addr, DataBuffer &result, string &errors) override
+	// {
+	// 	MYLOG("%s()\n", __func__);
 
-		/* prepend directives to command the assembler's origin and endianness */
-		string src;
-		char buf[1024];
-		snprintf(buf, sizeof(buf), ".org %" PRIx64 "\n", addr);
-		src += string(buf);
-		snprintf(buf, sizeof(buf), ".endian %s\n", (endian == BigEndian) ? "big" : "little");
-		src += string(buf);
-		src += code;
+	// 	/* prepend directives to command the assembler's origin and endianness */
+	// 	string src;
+	// 	char buf[1024];
+	// 	snprintf(buf, sizeof(buf), ".org %" PRIx64 "\n", addr);
+	// 	src += string(buf);
+	// 	snprintf(buf, sizeof(buf), ".endian %s\n", (endian == BigEndian) ? "big" : "little");
+	// 	src += string(buf);
+	// 	src += code;
 
-		/* assemble */
-		vector<uint8_t> byteEncoding;
-		if (assemble_multiline(src, byteEncoding, errors))
-		{
-			MYLOG("assemble_multiline() failed, errors contains: %s\n", errors.c_str());
-			return false;
-		}
+	// 	/* assemble */
+	// 	vector<uint8_t> byteEncoding;
+	// 	if (assemble_multiline(src, byteEncoding, errors))
+	// 	{
+	// 		MYLOG("assemble_multiline() failed, errors contains: %s\n", errors.c_str());
+	// 		return false;
+	// 	}
 
-		result.Clear();
-		// for(int i=0; i<byteEncoding.size(); ++i)
-		result.Append(&(byteEncoding[0]), byteEncoding.size());
-		return true;
-	}
+	// 	result.Clear();
+	// 	// for(int i=0; i<byteEncoding.size(); ++i)
+	// 	result.Append(&(byteEncoding[0]), byteEncoding.size());
+	// 	return true;
+	// }
 
 	/*************************************************************************/
 
@@ -1788,32 +1789,19 @@ class SparcImportedFunctionRecognizer: public FunctionRecognizer
 		return true;
 	}
 
-	bool RecognizeMachoPLTEntries(BinaryView* data, Function* func, LowLevelILFunction* il)
-	{
-		(void)data;
-		(void)func;
-		(void)il;
-
-		MYLOG("%s()\n", __func__);
-
-		return false;
-	}
-
 	public:
 	virtual bool RecognizeLowLevelIL(BinaryView* data, Function* func, LowLevelILFunction* il) override
 	{
 		if (RecognizeELFPLTEntries(data, func, il))
 			return true;
-		else if (RecognizeMachoPLTEntries(data, func, il))
-			return true;
 		return false;
 	}
 };
 
-class SparvSvr4CallingConvention: public CallingConvention
+class SparcSWCallingConvention: public CallingConvention
 {
 public:
-	SparcSvr4CallingConvention(Architecture* arch): CallingConvention(arch, "sparc_window")
+	SparcSWCallingConvention(Architecture* arch): CallingConvention(arch, "sparc_window")
 	{
 	}
 
@@ -1831,10 +1819,8 @@ public:
 	virtual vector<uint32_t> GetFloatArgumentRegisters() override
 	{
 		return vector<uint32_t>{
-			PPC_REG_F1, PPC_REG_F2, PPC_REG_F3, PPC_REG_F4,
-			PPC_REG_F5, PPC_REG_F6, PPC_REG_F7, PPC_REG_F8,
-			PPC_REG_F9, PPC_REG_F10, PPC_REG_F11, PPC_REG_F12,
-			PPC_REG_F13
+			SPARC_REG_O0, SPARC_REG_O1, SPARC_REG_O2, SPARC_REG_O3,
+			SPARC_REG_O4, SPARC_REG_O5
 		};
 	}
 
@@ -1859,7 +1845,7 @@ public:
 
 	virtual uint32_t GetGlobalPointerRegister() override
 	{
-		return PPC_REG_R13;
+		return SPARC_REG_G0;
 	}
 
 
@@ -1871,7 +1857,7 @@ public:
 
 	virtual uint32_t GetFloatReturnValueRegister() override
 	{
-		return PPC_REG_F1;
+		return SPARC_REG_F0;
 	}
 };
 
@@ -1885,33 +1871,31 @@ public:
 	virtual vector<uint32_t> GetIntegerArgumentRegisters() override
 	{
 		return vector<uint32_t>{
-			PPC_REG_R0,
-			PPC_REG_R3, PPC_REG_R4, PPC_REG_R5, PPC_REG_R6,
-			PPC_REG_R7, PPC_REG_R8, PPC_REG_R9, PPC_REG_R10
+			SPARC_REG_I0, SPARC_REG_I1, SPARC_REG_I2, SPARC_REG_I3,
+			SPARC_REG_I4, SPARC_REG_I5, SPARC_REG_FP, SPARC_REG_I7,
+			/* remaining arguments onto stack */
 		};
 	}
 
 	virtual vector<uint32_t> GetCallerSavedRegisters() override
 	{
 		return vector<uint32_t>{
-			PPC_REG_R3
+			SPARC_REG_O0, SPARC_REG_O1, SPARC_REG_O2, SPARC_REG_O3,
+			SPARC_REG_O4, SPARC_REG_O5, SPARC_REG_SP, SPARC_REG_O7,
 		};
 	}
 
 	virtual vector<uint32_t> GetCalleeSavedRegisters() override
 	{
 		return vector<uint32_t>{
-			PPC_REG_R14, PPC_REG_R15, PPC_REG_R16, PPC_REG_R17,
-			PPC_REG_R18, PPC_REG_R19, PPC_REG_R20, PPC_REG_R21,
-			PPC_REG_R22, PPC_REG_R23, PPC_REG_R24, PPC_REG_R25,
-			PPC_REG_R26, PPC_REG_R27, PPC_REG_R28, PPC_REG_R29,
-			PPC_REG_R30, PPC_REG_R31
+			SPARC_REG_L0, SPARC_REG_L1, SPARC_REG_L2, SPARC_REG_L3,
+			SPARC_REG_L4, SPARC_REG_L5, SPARC_REG_L6, SPARC_REG_L7,
 		};
 	}
 
 	virtual uint32_t GetIntegerReturnValueRegister() override
 	{
-		return PPC_REG_R3;
+		return SPARC_REG_O0;
 	}
 
 	virtual bool IsEligibleForHeuristics() override
@@ -1940,47 +1924,47 @@ public:
 		uint64_t target = reloc->GetTarget();
 		switch (info.nativeType)
 		{
-		case R_PPC_ADDR16_LO:
-			dest16[0] = swap16((uint16_t)((target + info.addend) & 0xffff));
-			break;
-		case R_PPC_ADDR16_HA:
-			dest16[0] = swap16((uint16_t)((target + info.addend) >> 16));
-			break;
-		case R_PPC_REL24:
-			dest32[0] = swap((swap(dest32[0]) & 0xfc000003) |
-				(uint32_t)((((target + info.addend - reloc->GetAddress()) >> 2) & 0xffffff) << 2));
-			break;
-		case R_PPC_REL16_HA:
-			dest16[0] = swap16(HA(target - reloc->GetAddress() + info.addend));
-			break;
-		case R_PPC_REL16_HI:
-			dest16[0] = swap16((uint16_t)((target - reloc->GetAddress()+ info.addend) >> 16));
-			break;
-		case R_PPC_REL16_LO:
-			dest16[0] = swap16((uint16_t)((target - reloc->GetAddress()+ info.addend) & 0xffff));
-			break;
-		case R_PPC_JMP_SLOT:
-		case R_PPC_GLOB_DAT:
-		case R_PPC_COPY:
+		// case R_PPC_ADDR16_LO:
+		// 	dest16[0] = swap16((uint16_t)((target + info.addend) & 0xffff));
+		// 	break;
+		// case R_PPC_ADDR16_HA:
+		// 	dest16[0] = swap16((uint16_t)((target + info.addend) >> 16));
+		// 	break;
+		// case R_PPC_REL24:
+		// 	dest32[0] = swap((swap(dest32[0]) & 0xfc000003) |
+		// 		(uint32_t)((((target + info.addend - reloc->GetAddress()) >> 2) & 0xffffff) << 2));
+		// 	break;
+		// case R_PPC_REL16_HA:
+		// 	dest16[0] = swap16(HA(target - reloc->GetAddress() + info.addend));
+		// 	break;
+		// case R_PPC_REL16_HI:
+		// 	dest16[0] = swap16((uint16_t)((target - reloc->GetAddress()+ info.addend) >> 16));
+		// 	break;
+		// case R_PPC_REL16_LO:
+		// 	dest16[0] = swap16((uint16_t)((target - reloc->GetAddress()+ info.addend) & 0xffff));
+		// 	break;
+		case R_SPARC_JMP_SLOT:
+		case R_SPARC_GLOB_DAT:
+		case R_SPARC_COPY:
 			dest32[0] = swap((uint32_t)target);
 			break;
-		case R_PPC_PLTREL24:
-			dest32[0] = swap((swap(dest32[0]) & 0xfc000003) |
-				(uint32_t)((((target + info.addend - reloc->GetAddress()) >> 2) & 0xffffff) << 2));
-			break;
-		case R_PPC_LOCAL24PC:
-			dest32[0] = swap((swap(dest32[0]) & 0xfc000003) |
-				(uint32_t)((((target + info.addend - reloc->GetAddress()) >> 2) & 0xffffff) << 2));
-			break;
-		case R_PPC_ADDR32:
-			dest32[0] = swap((uint32_t)(target + info.addend));
-			break;
-		case R_PPC_RELATIVE:
+		// case R_PPC_PLTREL24:
+		// 	dest32[0] = swap((swap(dest32[0]) & 0xfc000003) |
+		// 		(uint32_t)((((target + info.addend - reloc->GetAddress()) >> 2) & 0xffffff) << 2));
+		// 	break;
+		// case R_PPC_LOCAL24PC:
+		// 	dest32[0] = swap((swap(dest32[0]) & 0xfc000003) |
+		// 		(uint32_t)((((target + info.addend - reloc->GetAddress()) >> 2) & 0xffffff) << 2));
+		// 	break;
+		// case R_PPC_ADDR32:
+		// 	dest32[0] = swap((uint32_t)(target + info.addend));
+		// 	break;
+		case R_SPARC_RELATIVE:
 			dest32[0] = swap((uint32_t)info.base);
 			break;
-		case R_PPC_REL32:
-			dest32[0] = swap((uint32_t)(target - reloc->GetAddress() + info.addend));
-			break;
+		// case R_PPC_REL32:
+		// 	dest32[0] = swap((uint32_t)(target - reloc->GetAddress() + info.addend));
+		// 	break;
 		}
 		return true;
 	}
@@ -1997,46 +1981,46 @@ public:
 			reloc.dataRelocation = false;
 			switch (reloc.nativeType)
 			{
-			case R_PPC_NONE:
+			case R_SPARC_NONE:
 				reloc.type = IgnoredRelocation;
 				break;
-			case R_PPC_COPY:
+			case R_SPARC_COPY:
 				reloc.type = ELFCopyRelocationType;
 				break;
-			case R_PPC_GLOB_DAT:
+			case R_SPARC_GLOB_DAT:
 				reloc.type = ELFGlobalRelocationType;
 				break;
-			case R_PPC_JMP_SLOT:
+			case R_SPARC_JMP_SLOT:
 				reloc.type = ELFJumpSlotRelocationType;
 				break;
-			case R_PPC_ADDR16_HA:
-			case R_PPC_ADDR16_LO:
-				reloc.size = 2;
-				break;
-			case R_PPC_REL16_HA:
-			case R_PPC_REL16_HI:
-			case R_PPC_REL16_LO:
-				reloc.size = 2;
-				reloc.pcRelative = true;
-				break;
-			case R_PPC_REL24:
-			case R_PPC_PLTREL24:
-				reloc.pcRelative = true;
-				break;
-			case R_PPC_ADDR32:
-				reloc.dataRelocation = true;
-				break;
-			case R_PPC_RELATIVE:
-				reloc.dataRelocation = true;
-				reloc.baseRelative = true;
-				reloc.base += reloc.addend;
-				break;
-			case R_PPC_REL32:
-				reloc.pcRelative = true;
-				break;
-			case R_PPC_LOCAL24PC:
-				reloc.pcRelative = true;
-				break;
+			// case R_PPC_ADDR16_HA:
+			// case R_PPC_ADDR16_LO:
+			// 	reloc.size = 2;
+			// 	break;
+			// case R_PPC_REL16_HA:
+			// case R_PPC_REL16_HI:
+			// case R_PPC_REL16_LO:
+			// 	reloc.size = 2;
+			// 	reloc.pcRelative = true;
+			// 	break;
+			// case R_PPC_REL24:
+			// case R_PPC_PLTREL24:
+			// 	reloc.pcRelative = true;
+			// 	break;
+			// case R_PPC_ADDR32:
+			// 	reloc.dataRelocation = true;
+			// 	break;
+			// case R_PPC_RELATIVE:
+			// 	reloc.dataRelocation = true;
+			// 	reloc.baseRelative = true;
+			// 	reloc.base += reloc.addend;
+			// 	break;
+			// case R_SPARC_REL32:
+			// 	reloc.pcRelative = true;
+			// 	break;
+			// case R_PPC_LOCAL24PC:
+			// 	reloc.pcRelative = true;
+			// 	break;
 			default:
 				reloc.type = UnhandledRelocation;
 				relocTypes.insert(reloc.nativeType);
@@ -2044,7 +2028,7 @@ public:
 			}
 		}
 		for (auto& reloc : relocTypes)
-			LogWarn("Unsupported ELF relocation type: %s", GetRelocationString((ElfPpcRelocationType)reloc));
+			LogWarn("Unsupported ELF relocation type: %s", GetRelocationString((ElfSparcRelocationType)reloc));
 		return true;
 	}
 
@@ -2058,10 +2042,10 @@ public:
 		auto info = relocation->GetInfo();
 		switch (info.nativeType)
 		{
-		case R_PPC_ADDR16_HA:
-		case R_PPC_REL16_HA:
-		case R_PPC_REL16_HI:
-			return BN_NOCOERCE_EXTERN_PTR;
+		// case R_PPC_ADDR16_HA:
+		// case R_PPC_REL16_HA:
+		// case R_PPC_REL16_HI:
+		// 	return BN_NOCOERCE_EXTERN_PTR;
 		default:
 			return BN_AUTOCOERCE_EXTERN_PTR;
 		}
@@ -2086,7 +2070,7 @@ extern "C"
 		MYLOG("ARCH SPARC compiled at %s %s\n", __DATE__, __TIME__);
 
 		/* create, register arch in global list of available architectures */
-		Architecture* sparco = new PowerpcArchitecture("sparc", BigEndian);
+		Architecture* sparco = new SparcArchitecture("sparc", BigEndian);
 		Architecture::Register(sparco);
 
 		/* calling conventions */
@@ -2098,9 +2082,9 @@ extern "C"
 		sparco->RegisterCallingConvention(conv);
 
 		/* function recognizer */
-		sparco->RegisterFunctionRecognizer(new PpcImportedFunctionRecognizer());
+		sparco->RegisterFunctionRecognizer(new SparcImportedFunctionRecognizer());
 
-		sparco->RegisterRelocationHandler("ELF", new PpcElfRelocationHandler());
+		sparco->RegisterRelocationHandler("ELF", new SparcElfRelocationHandler());
 
 		/* for e_machine field in Elf32_Ehdr */
 		#define EM_SPARC 0x02

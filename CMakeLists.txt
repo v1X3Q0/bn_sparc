@@ -14,9 +14,9 @@ endif()
 
 file(GLOB SOURCES
 	arch_sparc.cpp
-	assembler.cpp
+	# assembler.cpp
 	disassembler.cpp
-	il.cpp
+	# il.cpp
 	util.cpp
 	*.h
 )
