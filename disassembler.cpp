@@ -106,6 +106,7 @@ extern "C" int
 sparc_decompose(const uint8_t *data, int size, uint32_t addr, bool lil_end,
 	struct decomp_result *res, bool is_64bit, int cs_mode_arg)
 {
+	bool meek = false;
 	int rc = -1;
 	res->status = STATUS_ERROR_UNSPEC;
 
