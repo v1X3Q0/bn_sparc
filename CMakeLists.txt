@@ -17,7 +17,7 @@ file(GLOB SOURCES
 	# assembler.cpp
 	disassembler.cpp
 	il.cpp
-	util.cpp
+	# util.cpp
 	*.h
 )
 
