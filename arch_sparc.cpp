@@ -234,60 +234,70 @@ class SparcArchitecture: public Architecture
 			/* account for absolute addressing */
 			target += addr;
 
+			result.AddBranch(CallDestination, target);
 		}
 		else
 		{
-
-		}
-
-		switch (res.insn.id)
-		{
-		case SPARC_INS_B:
-		case SPARC_INS_BRGEZ:
-		case SPARC_INS_BRGZ:
-		case SPARC_INS_BRLEZ:
-		case SPARC_INS_BRLZ:
-		case SPARC_INS_BRNZ:
-		case SPARC_INS_BRZ:
-			target = raw_insn & 0x003fffff;
-
-			if ((target >> 21) != 0)
+			switch (res.insn.id)
 			{
-				target |= 0xffc00000;
-			}
+			case SPARC_INS_BRZ:
+			case SPARC_INS_BRLZ:
+			case SPARC_INS_BRLEZ:
+			case SPARC_INS_BRNZ:
+			case SPARC_INS_BRGZ:
+			case SPARC_INS_BRGEZ:
+				target = (raw_insn & 0x00300000) >> 6;
+				target |= (raw_insn & 0x00003fff);
 
-			target = (addr + 0) + (target << 2);
+				// 16 bit immediate
+				if ((target >> 15) == 1)
+				{
+					target |= 0xffffffffffff0000;
+				}
 
-			if ((raw_insn >> 25) & 0x7)
-			{
+				target = target << 2;
+				target += addr;
+
 				result.AddBranch(FalseBranch, addr + 4);
 				result.AddBranch(TrueBranch, target);
+
+				break;
+			case SPARC_INS_B:
+				target = raw_insn & 0x003fffff;
+
+				// 22 bit immediate
+				if ((target >> 21) == 1)
+				{
+					target |= ~(uint64_t)(0x003fffff);
+				}
+
+				target = target << 2;
+				target += addr;
+
+				// conditional branch
+				if ((raw_insn >> 25) & 0x7)
+				{
+					result.AddBranch(FalseBranch, addr + 4);
+					result.AddBranch(TrueBranch, target);
+				}
+				// branch always
+				else if ((raw_insn >> 25) & 0x8)
+				{
+					result.AddBranch(UnconditionalBranch, target);
+				}
+
+				break;
+			
+			// assuming that jmpl, is a ret. which sometimes it is
+			case SPARC_INS_JMPL:
+			case SPARC_INS_RET:
+			case SPARC_INS_RETT:
+				result.AddBranch(FunctionReturn);
+				break;
+			case SPARC_INS_JMP:
+				break;
 			}
-			else if ((raw_insn >> 25) & 0x8)
-			{
-				result.AddBranch(UnconditionalBranch, target);
-			}
 
-			break;
-		case SPARC_INS_CALL:
-			// call is a 30 bit index, get them 30
-			target = raw_insn & 0x3fffffff;
-
-			// sign extend
-			if ((target >> 29) & 1)
-			{
-				target |= 0xffffffffc0000000;
-			}
-
-			target = target << 2;
-
-			target = (addr + 4) + target;
-
-			result.AddBranch(CallDestination, target);
-
-			break;
-		case SPARC_INS_JMP:
-			break;
 		}
 
 		switch(insn->id) {
@@ -1446,12 +1456,15 @@ public:
 	{
 	}
 
-
+	// Per the sparc spec, I0-I7 should be an input register, but seems
+	// like its usually O0-O7
 	virtual vector<uint32_t> GetIntegerArgumentRegisters() override
 	{
 		return vector<uint32_t>{
-			SPARC_REG_I0, SPARC_REG_I1, SPARC_REG_I2, SPARC_REG_I3,
-			SPARC_REG_I4, SPARC_REG_I5, SPARC_REG_FP, SPARC_REG_I7,
+			// SPARC_REG_I0, SPARC_REG_I1, SPARC_REG_I2, SPARC_REG_I3,
+			// SPARC_REG_I4, SPARC_REG_I5, SPARC_REG_FP, SPARC_REG_I7,
+			SPARC_REG_O0, SPARC_REG_O1, SPARC_REG_O2, SPARC_REG_O3,
+			SPARC_REG_O4, SPARC_REG_O5, SPARC_REG_SP, SPARC_REG_O7,
 			/* remaining arguments onto stack */
 		};
 	}
@@ -1509,11 +1522,14 @@ public:
 	{
 	}
 
+	// using the same as the SWCallingConvention
 	virtual vector<uint32_t> GetIntegerArgumentRegisters() override
 	{
 		return vector<uint32_t>{
-			SPARC_REG_I0, SPARC_REG_I1, SPARC_REG_I2, SPARC_REG_I3,
-			SPARC_REG_I4, SPARC_REG_I5, SPARC_REG_FP, SPARC_REG_I7,
+			// SPARC_REG_I0, SPARC_REG_I1, SPARC_REG_I2, SPARC_REG_I3,
+			// SPARC_REG_I4, SPARC_REG_I5, SPARC_REG_FP, SPARC_REG_I7,
+			SPARC_REG_O0, SPARC_REG_O1, SPARC_REG_O2, SPARC_REG_O3,
+			SPARC_REG_O4, SPARC_REG_O5, SPARC_REG_SP, SPARC_REG_O7,
 			/* remaining arguments onto stack */
 		};
 	}

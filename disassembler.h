@@ -29,6 +29,12 @@ Then some helpers if you need them:
 #define SPARC_CALL_MASK		0xc0000000
 #define SPARC_CALL_MASKED	0x40000000
 
+#define SPARC_B_MASK		0xc1c00000
+#define SPARC_B_MASKED		0x00400000
+
+#define SPARC_BP_MASK		0xd1c00000
+#define SPARC_BP_MASKED		0x00c00000
+
 //*****************************************************************************
 // structs and types
 //*****************************************************************************
