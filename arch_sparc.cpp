@@ -192,6 +192,8 @@ class SparcArchitecture: public Architecture
 		struct cs_insn *insn = &(res.insn);
 		uint64_t target = 0;
 		uint32_t raw_insn = 0;
+		int bitwidth = 0;
+		int bitoffset = 0;
 
 		//MYLOG("%s()\n", __func__);
 
@@ -222,13 +224,7 @@ class SparcArchitecture: public Architecture
 
 		if ((raw_insn & SPARC_CALL_MASK) == SPARC_CALL_MASKED)
 		{
-			target = raw_insn & 0x3fffffff;
-
-			if ((target >> 29) & 1)
-			{
-				target |= 0xffffffffc0000000;
-			}
-
+			target = sign_extend_bitnn(raw_insn, 0, 30);
 			target = target << 2;
 
 			/* account for absolute addressing */
@@ -263,14 +259,19 @@ class SparcArchitecture: public Architecture
 
 				break;
 			case SPARC_INS_B:
-				target = raw_insn & 0x003fffff;
-
-				// 22 bit immediate
-				if ((target >> 21) == 1)
+				if ((raw_insn & SPARC_B_MASK) == SPARC_BIC_MASKED)
 				{
-					target |= ~(uint64_t)(0x003fffff);
+					bitwidth = SPARC_BIC_BITWIDTH;
+					bitoffset = 0;
+				}
+				else if ((raw_insn & SPARC_B_MASK) == SPARC_BPC_MASKED)
+				{
+					bitwidth = SPARC_BPC_BITWIDTH;
+					bitoffset = 0;
 				}
 
+				// BinaryNinja::LogWarn("%s addr:0x%llx bitw:%d", __func__, addr, bitwidth);
+				target = sign_extend_bitnn(raw_insn, bitoffset, bitwidth);
 				target = target << 2;
 				target += addr;
 
@@ -1007,7 +1008,7 @@ class SparcArchitecture: public Architecture
 	virtual uint32_t GetLinkRegister() override
 	{
 		//MYLOG("%s()\n", __func__);
-		return SPARC_REG_O7;
+		return SPARC_REG_LINK;
 	}
 
 	/*************************************************************************/

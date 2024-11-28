@@ -16,3 +16,6 @@ inline uint32_t bswap32(uint32_t x)
 
 void printOperandVerbose(decomp_result *res, cs_ppc_op *opers);
 void printInstructionVerbose(decomp_result *res);
+
+uint32_t genMask(uint32_t mb, uint32_t me);
+uint64_t sign_extend_bitnn(uint64_t in, int bitoffset, int bitwidth);

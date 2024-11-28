@@ -23,14 +23,6 @@ using namespace BinaryNinja;
 #define MYLOG(...) while(0);
 //#define MYLOG BinaryNinja::LogDebug
 
-static uint32_t genMask(uint32_t mb, uint32_t me)
-{
-	uint32_t maskBegin = ~0u >> mb;
-	uint32_t maskEnd = ~0u << (31 - me);
-
-	return (mb <= me) ? (maskBegin & maskEnd) : (maskBegin | maskEnd);
-}
-
 static ExprId operToIL_sz(LowLevelILFunction &il, struct cs_sparc_op *op,
 	int archsz, int options=0, uint64_t extra=0)
 {
@@ -204,12 +196,7 @@ static bool LiftBranches(Architecture* arch, LowLevelILFunction &il, const uint8
 
 	if ((insn & SPARC_CALL_MASK) == SPARC_CALL_MASKED)
 	{
-		target = insn & 0x3fffffff;
-
-		if ((target >> 29) & 1)
-		{
-			target |= 0xffffffffc0000000;
-		}
+		target = sign_extend_bitnn(insn, 0, 30);
 
 		target = target << 2;
 
@@ -224,36 +211,64 @@ static bool LiftBranches(Architecture* arch, LowLevelILFunction &il, const uint8
 		
 		result = true;
 	}
-	// else if ((insn & SPARC_B_MASK) == SPARC_B_MASKED)
-	// {
-	// 	target = insn & 0x003fffff;
+	else if (
+		((insn & SPARC_B_MASK) == SPARC_BIC_MASKED) ||
+		((insn & SPARC_B_MASK) == SPARC_BPC_MASKED))
+	{
+		int bitwidth = 0;
+		int bitoffset = 0;
 
-	// 	// 22 bit immediate
-	// 	if ((target >> 21) == 1)
-	// 	{
-	// 		target |= ~(uint64_t)(0x003fffff);
-	// 	}
+		if ((insn & SPARC_B_MASK) == SPARC_BIC_MASKED)
+		{
+			bitwidth = SPARC_BIC_BITWIDTH;
+			bitoffset = 0;
+		}
+		else
+		{
+			bitwidth = SPARC_BPC_BITWIDTH;
+			bitoffset = 0;
+		}
 
-	// 	target = target << 2;
-	// 	target += addr;
+		target = sign_extend_bitnn(insn, bitoffset, bitwidth);
+
+		target = target << 2;
+		target += addr;
 		
-	// 	dest = il.ConstPointer(arch->GetAddressSize(), target);
+		dest = il.ConstPointer(arch->GetAddressSize(), target);
 
-	// 	// conditional branch
-	// 	if ((insn >> 25) & 0x7)
-	// 	{
-	// 		il.CompareEqual(4, il.Const(1, 1), il.Const(1, 1));
-	// 		existingTakenLabel = il.GetLabelForAddress(arch, target);
-	// 		existingFalseLabel = il.GetLabelForAddress(arch, addr + 4);
-	// 		il.AddInstruction(il.If(condition, *existingTakenLabel, *existingFalseLabel));
-	// 	}
-	// 	// branch always
-	// 	else if ((insn >> 25) & 0x8)
-	// 	{
-	// 		il.AddInstruction(il.Jump(dest));
-	// 	}
-	// 	result = true;
-	// }
+		// conditional branch
+		if ((insn >> 25) & 0x7)
+		{
+			condition = il.CompareEqual(4, il.Const(1, 1), il.Const(1, 1));
+			existingTakenLabel = il.GetLabelForAddress(arch, target);
+			existingFalseLabel = il.GetLabelForAddress(arch, addr + 4);
+
+			if (existingTakenLabel && existingFalseLabel)
+			{
+				il.AddInstruction(il.If(condition, *existingTakenLabel, *existingFalseLabel));
+			}
+			if (existingTakenLabel)
+			{
+				il.AddInstruction(il.If(condition, *existingTakenLabel, falseCode));
+				il.MarkLabel(falseCode);
+				il.AddInstruction(il.Jump(il.ConstPointer(arch->GetAddressSize(), addr + 4)));
+			}
+
+			if (existingFalseLabel)
+			{
+				il.AddInstruction(il.If(condition, trueCode, *existingFalseLabel));
+				il.MarkLabel(trueCode);
+				il.AddInstruction(il.Jump(il.ConstPointer(arch->GetAddressSize(), target)));
+			}
+
+		}
+		// branch always
+		else if ((insn >> 25) & 0x8)
+		{
+			il.AddInstruction(il.Jump(dest));
+		}
+		result = true;
+	}
 	else if ((insn & SPARC_BP_MASK) == SPARC_BP_MASKED)
 	{
 		target = (insn & 0x00300000) >> 6;
@@ -268,7 +283,7 @@ static bool LiftBranches(Architecture* arch, LowLevelILFunction &il, const uint8
 		target = target << 2;
 		target += addr;
 
-		il.CompareEqual(4, il.Const(1, 1), il.Const(1, 1));
+		condition = il.CompareEqual(4, il.Const(1, 1), il.Const(1, 1));
 		existingTakenLabel = il.GetLabelForAddress(arch, target);
 		existingFalseLabel = il.GetLabelForAddress(arch, addr + 4);
 
@@ -559,8 +574,6 @@ bool GetLowLevelILForSparcInstruction(Architecture *arch, LowLevelILFunction &il
 			}
 			ei0 = il.Call(ei0);
 			il.AddInstruction(ei0);
-#define SPARC_REG_LINK SPARC_REG_O7
-#define SPARC_REG_PC SPARC_REG_Y
 			ei0 = il.SetRegister(arch->GetAddressSize(), SPARC_REG_LINK, il.Register(arch->GetAddressSize(), SPARC_REG_PC));
 			il.AddInstruction(ei0);
 			break;
@@ -584,6 +597,7 @@ bool GetLowLevelILForSparcInstruction(Architecture *arch, LowLevelILFunction &il
 			break;
 
 		// this one straight up has the same opcode as SPARC_INS_JMPL
+		case SPARC_INS_RETL:
 		case SPARC_INS_RET:
 			if (oper0 == 0)
 			{

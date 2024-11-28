@@ -26,11 +26,18 @@ Then some helpers if you need them:
 #include "capstone/cs_priv.h"
 #include "capstone/sparc.h"
 
+#define SPARC_REG_LINK SPARC_REG_O7
+#define SPARC_REG_PC SPARC_REG_Y
+
 #define SPARC_CALL_MASK		0xc0000000
 #define SPARC_CALL_MASKED	0x40000000
 
 #define SPARC_B_MASK		0xc1c00000
-#define SPARC_B_MASKED		0x00400000
+#define SPARC_BIC_MASKED	0x00800000
+#define SPARC_BPC_MASKED	0x00400000
+
+#define SPARC_BIC_BITWIDTH	22
+#define SPARC_BPC_BITWIDTH	19
 
 #define SPARC_BP_MASK		0xd1c00000
 #define SPARC_BP_MASKED		0x00c00000
