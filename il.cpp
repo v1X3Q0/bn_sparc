@@ -422,7 +422,7 @@ bool GetLowLevelILForSparcInstruction(Architecture *arch, LowLevelILFunction &il
 
 	ExprId ei0, ei1, ei2;
 
-	BinaryNinja::LogWarn("addr:%llx inst:%s id:%d", addr, insn->mnemonic, insn->id);
+	// BinaryNinja::LogWarn("addr:%llx inst:%s id:%d", addr, insn->mnemonic, insn->id);
 
 	switch(insn->id) {
 		/* add
