@@ -24,7 +24,10 @@ Then some helpers if you need them:
 /* capstone stuff /usr/local/include/capstone */
 #include "capstone/capstone.h"
 #include "capstone/cs_priv.h"
-#include "capstone/ppc.h"
+#include "capstone/sparc.h"
+
+#define SPARC_CALL_MASK		0xc0000000
+#define SPARC_CALL_MASKED	0x40000000
 
 //*****************************************************************************
 // structs and types
