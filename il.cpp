@@ -579,8 +579,47 @@ bool GetLowLevelILForSparcInstruction(Architecture *arch, LowLevelILFunction &il
 			break;
 
 		case SPARC_INS_SAVE:
-			ei0 = il.Add(arch->GetAddressSize(), operToIL(il, oper0), operToIL(il, oper1), operToIL(il, oper2));
+			ei0 = il.Add(arch->GetAddressSize(), operToIL(il, oper0), operToIL(il, oper1));
+			ei0 = il.SetRegister(arch->GetAddressSize(), oper2->reg, ei0);
 			il.AddInstruction(ei0);
+
+			#define NRI		7
+			#define NRIL	8
+
+			// first we save the old I0-I7 registers
+			for (int i = 0; i < NRI; i++)
+			{
+				ei0 = il.Add(arch->GetAddressSize(), operToIL(il, oper2), il.Const(arch->GetAddressSize(), i * arch->GetAddressSize()));
+				ei1 = il.Register(arch->GetAddressSize(), SPARC_REG_I0 + i);
+				il.AddInstruction(il.Store(arch->GetAddressSize(), ei0, ei1));
+			}
+
+			// also save the Locals, L0-L7
+			for (int i = NRI; i < (NRIL + NRI); i++)
+			{
+				ei0 = il.Add(arch->GetAddressSize(), operToIL(il, oper2), il.Const(arch->GetAddressSize(), i * arch->GetAddressSize()));
+				ei1 = il.Register(arch->GetAddressSize(), SPARC_REG_L0 + i - NRI);
+				il.AddInstruction(il.Store(arch->GetAddressSize(), ei0, ei1));
+			}
+
+			// move the contents of the O registers to the I registers
+			for (int i = 0; i < NRI; i++)
+			{
+				il.AddInstruction(il.SetRegister(arch->GetAddressSize(), SPARC_REG_I0 + i, il.Register(arch->GetAddressSize(), SPARC_REG_O0 + i)));
+			}
+
+			// lastly, we zero the O0-O7 registers
+			for (int i = 0; i < NRI; i++)
+			{
+				il.AddInstruction(il.SetRegister(arch->GetAddressSize(), SPARC_REG_O0 + i, il.Const(arch->GetAddressSize(), 0)));
+			}
+
+			// and zero the locals, L0-L7
+			for (int i = 0; i < NRIL; i++)
+			{
+				il.AddInstruction(il.SetRegister(arch->GetAddressSize(), SPARC_REG_L0 + i, il.Const(arch->GetAddressSize(), 0)));
+			}
+
 			break;
 
 		case SPARC_INS_RETT:

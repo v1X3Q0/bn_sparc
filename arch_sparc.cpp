@@ -957,41 +957,41 @@ class SparcArchitecture: public Architecture
 		case SPARC_REG_FCC1: return RegisterInfo(SPARC_REG_FCC1, 0, 4);
 		case SPARC_REG_FCC2: return RegisterInfo(SPARC_REG_FCC2, 0, 4);
 		case SPARC_REG_FCC3: return RegisterInfo(SPARC_REG_FCC3, 0, 4);
-		case SPARC_REG_G0: return RegisterInfo(SPARC_REG_G0, 0, 4);
-		case SPARC_REG_G1: return RegisterInfo(SPARC_REG_G1, 0, 4);
-		case SPARC_REG_G2: return RegisterInfo(SPARC_REG_G2, 0, 4);
-		case SPARC_REG_G3: return RegisterInfo(SPARC_REG_G3, 0, 4);
-		case SPARC_REG_G4: return RegisterInfo(SPARC_REG_G4, 0, 4);
-		case SPARC_REG_G5: return RegisterInfo(SPARC_REG_G5, 0, 4);
-		case SPARC_REG_G6: return RegisterInfo(SPARC_REG_G6, 0, 4);
-		case SPARC_REG_G7: return RegisterInfo(SPARC_REG_G7, 0, 4);
-		case SPARC_REG_I0: return RegisterInfo(SPARC_REG_I0, 0, 4);
-		case SPARC_REG_I1: return RegisterInfo(SPARC_REG_I1, 0, 4);
-		case SPARC_REG_I2: return RegisterInfo(SPARC_REG_I2, 0, 4);
-		case SPARC_REG_I3: return RegisterInfo(SPARC_REG_I3, 0, 4);
-		case SPARC_REG_I4: return RegisterInfo(SPARC_REG_I4, 0, 4);
-		case SPARC_REG_I5: return RegisterInfo(SPARC_REG_I5, 0, 4);
-		case SPARC_REG_FP: return RegisterInfo(SPARC_REG_FP, 0, 4);
-		case SPARC_REG_I7: return RegisterInfo(SPARC_REG_I7, 0, 4);
-		case SPARC_REG_ICC: return RegisterInfo(SPARC_REG_ICC, 0, 4);
-		case SPARC_REG_L0: return RegisterInfo(SPARC_REG_L0, 0, 4);
-		case SPARC_REG_L1: return RegisterInfo(SPARC_REG_L1, 0, 4);
-		case SPARC_REG_L2: return RegisterInfo(SPARC_REG_L2, 0, 4);
-		case SPARC_REG_L3: return RegisterInfo(SPARC_REG_L3, 0, 4);
-		case SPARC_REG_L4: return RegisterInfo(SPARC_REG_L4, 0, 4);
-		case SPARC_REG_L5: return RegisterInfo(SPARC_REG_L5, 0, 4);
-		case SPARC_REG_L6: return RegisterInfo(SPARC_REG_L6, 0, 4);
-		case SPARC_REG_L7: return RegisterInfo(SPARC_REG_L7, 0, 4);
-		case SPARC_REG_O0: return RegisterInfo(SPARC_REG_O0, 0, 4);
-		case SPARC_REG_O1: return RegisterInfo(SPARC_REG_O1, 0, 4);
-		case SPARC_REG_O2: return RegisterInfo(SPARC_REG_O2, 0, 4);
-		case SPARC_REG_O3: return RegisterInfo(SPARC_REG_O3, 0, 4);
-		case SPARC_REG_O4: return RegisterInfo(SPARC_REG_O4, 0, 4);
-		case SPARC_REG_O5: return RegisterInfo(SPARC_REG_O5, 0, 4);
-		case SPARC_REG_SP: return RegisterInfo(SPARC_REG_SP, 0, 4);
-		case SPARC_REG_O7: return RegisterInfo(SPARC_REG_O7, 0, 4);
-		case SPARC_REG_Y: return RegisterInfo(SPARC_REG_Y, 0, 4);
-		case SPARC_REG_XCC: return RegisterInfo(SPARC_REG_XCC, 0, 4);
+		case SPARC_REG_G0: return RegisterInfo(SPARC_REG_G0, 0, addressSize);
+		case SPARC_REG_G1: return RegisterInfo(SPARC_REG_G1, 0, addressSize);
+		case SPARC_REG_G2: return RegisterInfo(SPARC_REG_G2, 0, addressSize);
+		case SPARC_REG_G3: return RegisterInfo(SPARC_REG_G3, 0, addressSize);
+		case SPARC_REG_G4: return RegisterInfo(SPARC_REG_G4, 0, addressSize);
+		case SPARC_REG_G5: return RegisterInfo(SPARC_REG_G5, 0, addressSize);
+		case SPARC_REG_G6: return RegisterInfo(SPARC_REG_G6, 0, addressSize);
+		case SPARC_REG_G7: return RegisterInfo(SPARC_REG_G7, 0, addressSize);
+		case SPARC_REG_I0: return RegisterInfo(SPARC_REG_I0, 0, addressSize);
+		case SPARC_REG_I1: return RegisterInfo(SPARC_REG_I1, 0, addressSize);
+		case SPARC_REG_I2: return RegisterInfo(SPARC_REG_I2, 0, addressSize);
+		case SPARC_REG_I3: return RegisterInfo(SPARC_REG_I3, 0, addressSize);
+		case SPARC_REG_I4: return RegisterInfo(SPARC_REG_I4, 0, addressSize);
+		case SPARC_REG_I5: return RegisterInfo(SPARC_REG_I5, 0, addressSize);
+		case SPARC_REG_FP: return RegisterInfo(SPARC_REG_FP, 0, addressSize);
+		case SPARC_REG_I7: return RegisterInfo(SPARC_REG_I7, 0, addressSize);
+		case SPARC_REG_ICC: return RegisterInfo(SPARC_REG_ICC, 0, addressSize);
+		case SPARC_REG_L0: return RegisterInfo(SPARC_REG_L0, 0, addressSize);
+		case SPARC_REG_L1: return RegisterInfo(SPARC_REG_L1, 0, addressSize);
+		case SPARC_REG_L2: return RegisterInfo(SPARC_REG_L2, 0, addressSize);
+		case SPARC_REG_L3: return RegisterInfo(SPARC_REG_L3, 0, addressSize);
+		case SPARC_REG_L4: return RegisterInfo(SPARC_REG_L4, 0, addressSize);
+		case SPARC_REG_L5: return RegisterInfo(SPARC_REG_L5, 0, addressSize);
+		case SPARC_REG_L6: return RegisterInfo(SPARC_REG_L6, 0, addressSize);
+		case SPARC_REG_L7: return RegisterInfo(SPARC_REG_L7, 0, addressSize);
+		case SPARC_REG_O0: return RegisterInfo(SPARC_REG_O0, 0, addressSize);
+		case SPARC_REG_O1: return RegisterInfo(SPARC_REG_O1, 0, addressSize);
+		case SPARC_REG_O2: return RegisterInfo(SPARC_REG_O2, 0, addressSize);
+		case SPARC_REG_O3: return RegisterInfo(SPARC_REG_O3, 0, addressSize);
+		case SPARC_REG_O4: return RegisterInfo(SPARC_REG_O4, 0, addressSize);
+		case SPARC_REG_O5: return RegisterInfo(SPARC_REG_O5, 0, addressSize);
+		case SPARC_REG_SP: return RegisterInfo(SPARC_REG_SP, 0, addressSize);
+		case SPARC_REG_O7: return RegisterInfo(SPARC_REG_O7, 0, addressSize);
+		case SPARC_REG_Y: return RegisterInfo(SPARC_REG_Y, 0, addressSize);
+		case SPARC_REG_XCC: return RegisterInfo(SPARC_REG_XCC, 0, addressSize);
 		default:
 				//LogError("%s(%d == \"%s\") invalid argument", __func__,
 				//  regId, powerpc_reg_to_str(regId));
@@ -1462,10 +1462,8 @@ public:
 	virtual vector<uint32_t> GetIntegerArgumentRegisters() override
 	{
 		return vector<uint32_t>{
-			// SPARC_REG_I0, SPARC_REG_I1, SPARC_REG_I2, SPARC_REG_I3,
-			// SPARC_REG_I4, SPARC_REG_I5, SPARC_REG_FP, SPARC_REG_I7,
 			SPARC_REG_O0, SPARC_REG_O1, SPARC_REG_O2, SPARC_REG_O3,
-			SPARC_REG_O4, SPARC_REG_O5, SPARC_REG_SP, SPARC_REG_O7,
+			SPARC_REG_O4, SPARC_REG_O5, SPARC_REG_O7
 			/* remaining arguments onto stack */
 		};
 	}
@@ -1483,8 +1481,8 @@ public:
 	virtual vector<uint32_t> GetCallerSavedRegisters() override
 	{
 		return vector<uint32_t>{
-			SPARC_REG_O0, SPARC_REG_O1, SPARC_REG_O2, SPARC_REG_O3,
-			SPARC_REG_O4, SPARC_REG_O5, SPARC_REG_SP, SPARC_REG_O7,
+			// SPARC_REG_O0, SPARC_REG_O1, SPARC_REG_O2, SPARC_REG_O3,
+			// SPARC_REG_O4, SPARC_REG_O5, SPARC_REG_SP, SPARC_REG_O7,
 		};
 	}
 
@@ -1492,6 +1490,9 @@ public:
 	virtual vector<uint32_t> GetCalleeSavedRegisters() override
 	{
 		return vector<uint32_t>{
+
+			SPARC_REG_I0, SPARC_REG_I1, SPARC_REG_I2, SPARC_REG_I3,
+			SPARC_REG_I4, SPARC_REG_I5, SPARC_REG_I7,
 			SPARC_REG_L0, SPARC_REG_L1, SPARC_REG_L2, SPARC_REG_L3,
 			SPARC_REG_L4, SPARC_REG_L5, SPARC_REG_L6, SPARC_REG_L7,
 		};
@@ -1527,10 +1528,8 @@ public:
 	virtual vector<uint32_t> GetIntegerArgumentRegisters() override
 	{
 		return vector<uint32_t>{
-			// SPARC_REG_I0, SPARC_REG_I1, SPARC_REG_I2, SPARC_REG_I3,
-			// SPARC_REG_I4, SPARC_REG_I5, SPARC_REG_FP, SPARC_REG_I7,
 			SPARC_REG_O0, SPARC_REG_O1, SPARC_REG_O2, SPARC_REG_O3,
-			SPARC_REG_O4, SPARC_REG_O5, SPARC_REG_SP, SPARC_REG_O7,
+			SPARC_REG_O4, SPARC_REG_O5, SPARC_REG_O7
 			/* remaining arguments onto stack */
 		};
 	}
@@ -1538,14 +1537,14 @@ public:
 	virtual vector<uint32_t> GetCallerSavedRegisters() override
 	{
 		return vector<uint32_t>{
-			SPARC_REG_O0, SPARC_REG_O1, SPARC_REG_O2, SPARC_REG_O3,
-			SPARC_REG_O4, SPARC_REG_O5, SPARC_REG_SP, SPARC_REG_O7,
 		};
 	}
 
 	virtual vector<uint32_t> GetCalleeSavedRegisters() override
 	{
 		return vector<uint32_t>{
+			SPARC_REG_I0, SPARC_REG_I1, SPARC_REG_I2, SPARC_REG_I3,
+			SPARC_REG_I4, SPARC_REG_I5, SPARC_REG_I7,
 			SPARC_REG_L0, SPARC_REG_L1, SPARC_REG_L2, SPARC_REG_L3,
 			SPARC_REG_L4, SPARC_REG_L5, SPARC_REG_L6, SPARC_REG_L7,
 		};
@@ -1781,7 +1780,7 @@ extern "C"
 			"ELF", /* name of the binary view type */
 			EM_SPARC9, /* id (key in m_arch map) */
 			BigEndian,
-			sparco /* the architecture */
+			sparc9_64 /* the architecture */
 		);
 
 		return true;
