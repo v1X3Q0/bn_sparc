@@ -191,9 +191,6 @@ class SparcArchitecture: public Architecture
 		struct decomp_result res;
 		struct cs_insn *insn = &(res.insn);
 		uint64_t target = 0;
-		uint32_t raw_insn = 0;
-		int bitwidth = 0;
-		int bitoffset = 0;
 
 		//MYLOG("%s()\n", __func__);
 
@@ -215,99 +212,65 @@ class SparcArchitecture: public Architecture
 			return false;
 		}
 
-		raw_insn = *(const uint32_t *) data;
-
-		if (endian == BigEndian)
+		/* branch targets are resolved to absolute addresses by capstone; the
+		 * condition comes from the mnemonic (with detail.sparc.cc as backup) */
+		switch (insn->id)
 		{
-			raw_insn = bswap32(raw_insn);
-		}
+		case SPARC_INS_CALL:
+			if (SparcBranchTarget(&res, &target))
+				result.AddBranch(CallDestination, target);
+			break;
 
-		if ((raw_insn & SPARC_CALL_MASK) == SPARC_CALL_MASKED)
-		{
-			target = sign_extend_bitnn(raw_insn, 0, 30);
-			target = target << 2;
-
-			/* account for absolute addressing */
-			target += addr;
-
-			result.AddBranch(CallDestination, target);
-		}
-		else
-		{
-			switch (res.insn.id)
+		case SPARC_INS_B:
+		case SPARC_INS_FB:
+			if (SparcBranchTarget(&res, &target))
 			{
-			case SPARC_INS_BRZ:
-			case SPARC_INS_BRLZ:
-			case SPARC_INS_BRLEZ:
-			case SPARC_INS_BRNZ:
-			case SPARC_INS_BRGZ:
-			case SPARC_INS_BRGEZ:
-				target = (raw_insn & 0x00300000) >> 6;
-				target |= (raw_insn & 0x00003fff);
-
-				// 16 bit immediate
-				if ((target >> 15) == 1)
-				{
-					target |= 0xffffffffffff0000;
-				}
-
-				target = target << 2;
-				target += addr;
-
-				result.AddBranch(FalseBranch, addr + 4);
-				result.AddBranch(TrueBranch, target);
-
-				break;
-			case SPARC_INS_B:
-				if ((raw_insn & SPARC_B_MASK) == SPARC_BIC_MASKED)
-				{
-					bitwidth = SPARC_BIC_BITWIDTH;
-					bitoffset = 0;
-				}
-				else if ((raw_insn & SPARC_B_MASK) == SPARC_BPC_MASKED)
-				{
-					bitwidth = SPARC_BPC_BITWIDTH;
-					bitoffset = 0;
-				}
-
-				// BinaryNinja::LogWarn("%s addr:0x%llx bitw:%d", __func__, addr, bitwidth);
-				target = sign_extend_bitnn(raw_insn, bitoffset, bitwidth);
-				target = target << 2;
-				target += addr;
-
-				// conditional branch
-				if ((raw_insn >> 25) & 0x7)
-				{
-					result.AddBranch(FalseBranch, addr + 4);
-					result.AddBranch(TrueBranch, target);
-				}
-				// branch always
-				else if ((raw_insn >> 25) & 0x8)
-				{
+				sparc_branch_disp_t disp = SparcClassifyBranch(insn->id,
+						insn->mnemonic, res.detail.sparc.cc);
+				if (disp == SPARC_BRANCH_UNCOND)
 					result.AddBranch(UnconditionalBranch, target);
+				else if (disp == SPARC_BRANCH_CONDITIONAL)
+				{
+					result.AddBranch(TrueBranch, target);
+					result.AddBranch(FalseBranch, addr + 4);
 				}
-
-				break;
-			
-			// assuming that jmpl, is a ret. which sometimes it is
-			case SPARC_INS_JMPL:
-			case SPARC_INS_RET:
-			case SPARC_INS_RETT:
-				result.AddBranch(FunctionReturn);
-				break;
-			case SPARC_INS_JMP:
-				break;
+				/* SPARC_BRANCH_NEVER (bn): fallthrough only */
 			}
+			break;
 
-		}
+		case SPARC_INS_BRZ:
+		case SPARC_INS_BRLZ:
+		case SPARC_INS_BRLEZ:
+		case SPARC_INS_BRNZ:
+		case SPARC_INS_BRGZ:
+		case SPARC_INS_BRGEZ:
+			if (SparcBranchTarget(&res, &target))
+			{
+				result.AddBranch(TrueBranch, target);
+				result.AddBranch(FalseBranch, addr + 4);
+			}
+			break;
 
-		switch(insn->id) {
-			case PPC_INS_TRAP:
+		case SPARC_INS_JMPL:
+		case SPARC_INS_JMP:
+			if (SparcJmplIsReturn(&res))
+				result.AddBranch(FunctionReturn);
+			else
 				result.AddBranch(UnresolvedBranch);
-				break;
-			case PPC_INS_RFI:
-				result.AddBranch(UnresolvedBranch);
-				break;
+			break;
+
+		case SPARC_INS_RET:
+		case SPARC_INS_RETL:
+		case SPARC_INS_RETT:
+			result.AddBranch(FunctionReturn);
+			break;
+
+		case SPARC_INS_T:
+			result.AddBranch(UnresolvedBranch);
+			break;
+
+		default:
+			break;
 		}
 
 		result.length = 4;
@@ -410,13 +373,10 @@ class SparcArchitecture: public Architecture
 					snprintf(buf, sizeof(buf), "0x%llx", op->imm);
 					result.emplace_back(CodeRelativeAddressToken, buf, (uint32_t)op->imm, 4);
 					break;
-				// intended to be for instructions with immediates, addis or something
-				case SPARC_INS_ADD:
-					snprintf(buf, sizeof(buf), "0x%x", (uint16_t)op->imm);
-					result.emplace_back(IntegerToken, buf, (uint16_t)op->imm, 4);
-					break;
+				/* signed immediates: "add %i0, -1, %i1" must not print
+				 * as 0xffff (the old code truncated to uint16 here) */
 				default:
-					if (op->imm < 0 && op->imm > -0x10000)
+					if (op->imm < 0)
 						snprintf(buf, sizeof(buf), "-0x%llx", -op->imm);
 					else
 						snprintf(buf, sizeof(buf), "0x%llx", op->imm);
@@ -425,13 +385,30 @@ class SparcArchitecture: public Architecture
 
 				break;
 			case SPARC_OP_MEM:
-				// eg: lwz r11, 8(r11)
-				snprintf(buf, sizeof(buf), "%d", op->mem.disp);
-				result.emplace_back(IntegerToken, buf, op->mem.disp, 4);
+				// eg: ld [ %l0 + %l1 + 8 ], %l2
+				result.emplace_back(BraceToken, "[");
 
-				result.emplace_back(BraceToken, "(");
-				result.emplace_back(RegisterToken, GetRegisterName(op->mem.base));
-				result.emplace_back(BraceToken, ")");
+				if(op->mem.base && op->mem.base != SPARC_REG_G0)
+					result.emplace_back(RegisterToken, GetRegisterName(op->mem.base));
+				else
+					result.emplace_back(RegisterToken, "g0");
+
+				if(op->mem.index && op->mem.index != SPARC_REG_G0)
+				{
+					result.emplace_back(TextToken, "+");
+					result.emplace_back(RegisterToken, GetRegisterName(op->mem.index));
+				}
+
+				if(op->mem.disp != 0)
+				{
+					if(op->mem.disp < 0)
+						snprintf(buf, sizeof(buf), "-0x%llx", (unsigned long long)(-op->mem.disp));
+					else
+						snprintf(buf, sizeof(buf), "+0x%llx", (unsigned long long)op->mem.disp);
+					result.emplace_back(TextToken, buf);
+				}
+
+				result.emplace_back(BraceToken, "]");
 				break;
 			case SPARC_OP_INVALID:
 			default:
@@ -905,58 +882,64 @@ class SparcArchitecture: public Architecture
 		{
 			// BNRegisterInfo RegisterInfo(uint32_t fullWidthReg, size_t offset,
 			//   size_t size, bool zeroExtend = false)
-		case SPARC_REG_F0: return RegisterInfo(SPARC_REG_F0, 0, 4);
-		case SPARC_REG_F1: return RegisterInfo(SPARC_REG_F1, 0, 4);
-		case SPARC_REG_F2: return RegisterInfo(SPARC_REG_F2, 0, 4);
-		case SPARC_REG_F3: return RegisterInfo(SPARC_REG_F3, 0, 4);
-		case SPARC_REG_F4: return RegisterInfo(SPARC_REG_F4, 0, 4);
-		case SPARC_REG_F5: return RegisterInfo(SPARC_REG_F5, 0, 4);
-		case SPARC_REG_F6: return RegisterInfo(SPARC_REG_F6, 0, 4);
-		case SPARC_REG_F7: return RegisterInfo(SPARC_REG_F7, 0, 4);
-		case SPARC_REG_F8: return RegisterInfo(SPARC_REG_F8, 0, 4);
-		case SPARC_REG_F9: return RegisterInfo(SPARC_REG_F9, 0, 4);
-		case SPARC_REG_F10: return RegisterInfo(SPARC_REG_F10, 0, 4);
-		case SPARC_REG_F11: return RegisterInfo(SPARC_REG_F11, 0, 4);
-		case SPARC_REG_F12: return RegisterInfo(SPARC_REG_F12, 0, 4);
-		case SPARC_REG_F13: return RegisterInfo(SPARC_REG_F13, 0, 4);
-		case SPARC_REG_F14: return RegisterInfo(SPARC_REG_F14, 0, 4);
-		case SPARC_REG_F15: return RegisterInfo(SPARC_REG_F15, 0, 4);
-		case SPARC_REG_F16: return RegisterInfo(SPARC_REG_F16, 0, 4);
-		case SPARC_REG_F17: return RegisterInfo(SPARC_REG_F17, 0, 4);
-		case SPARC_REG_F18: return RegisterInfo(SPARC_REG_F18, 0, 4);
-		case SPARC_REG_F19: return RegisterInfo(SPARC_REG_F19, 0, 4);
-		case SPARC_REG_F20: return RegisterInfo(SPARC_REG_F20, 0, 4);
-		case SPARC_REG_F21: return RegisterInfo(SPARC_REG_F21, 0, 4);
-		case SPARC_REG_F22: return RegisterInfo(SPARC_REG_F22, 0, 4);
-		case SPARC_REG_F23: return RegisterInfo(SPARC_REG_F23, 0, 4);
-		case SPARC_REG_F24: return RegisterInfo(SPARC_REG_F24, 0, 4);
-		case SPARC_REG_F25: return RegisterInfo(SPARC_REG_F25, 0, 4);
-		case SPARC_REG_F26: return RegisterInfo(SPARC_REG_F26, 0, 4);
-		case SPARC_REG_F27: return RegisterInfo(SPARC_REG_F27, 0, 4);
-		case SPARC_REG_F28: return RegisterInfo(SPARC_REG_F28, 0, 4);
-		case SPARC_REG_F29: return RegisterInfo(SPARC_REG_F29, 0, 4);
-		case SPARC_REG_F30: return RegisterInfo(SPARC_REG_F30, 0, 4);
-		case SPARC_REG_F31: return RegisterInfo(SPARC_REG_F31, 0, 4);
-		case SPARC_REG_F32: return RegisterInfo(SPARC_REG_F32, 0, 4);
-		case SPARC_REG_F34: return RegisterInfo(SPARC_REG_F34, 0, 4);
-		case SPARC_REG_F36: return RegisterInfo(SPARC_REG_F36, 0, 4);
-		case SPARC_REG_F38: return RegisterInfo(SPARC_REG_F38, 0, 4);
-		case SPARC_REG_F40: return RegisterInfo(SPARC_REG_F40, 0, 4);
-		case SPARC_REG_F42: return RegisterInfo(SPARC_REG_F42, 0, 4);
-		case SPARC_REG_F44: return RegisterInfo(SPARC_REG_F44, 0, 4);
-		case SPARC_REG_F46: return RegisterInfo(SPARC_REG_F46, 0, 4);
-		case SPARC_REG_F48: return RegisterInfo(SPARC_REG_F48, 0, 4);
-		case SPARC_REG_F50: return RegisterInfo(SPARC_REG_F50, 0, 4);
-		case SPARC_REG_F52: return RegisterInfo(SPARC_REG_F52, 0, 4);
-		case SPARC_REG_F54: return RegisterInfo(SPARC_REG_F54, 0, 4);
-		case SPARC_REG_F56: return RegisterInfo(SPARC_REG_F56, 0, 4);
-		case SPARC_REG_F58: return RegisterInfo(SPARC_REG_F58, 0, 4);
-		case SPARC_REG_F60: return RegisterInfo(SPARC_REG_F60, 0, 4);
-		case SPARC_REG_F62: return RegisterInfo(SPARC_REG_F62, 0, 4);
-		case SPARC_REG_FCC0: return RegisterInfo(SPARC_REG_FCC0, 0, 4);
-		case SPARC_REG_FCC1: return RegisterInfo(SPARC_REG_FCC1, 0, 4);
-		case SPARC_REG_FCC2: return RegisterInfo(SPARC_REG_FCC2, 0, 4);
-		case SPARC_REG_FCC3: return RegisterInfo(SPARC_REG_FCC3, 0, 4);
+		/* FP registers are 8 bytes wide: doubles occupy aligned pairs and
+		 * no sub register access is exposed, so single precision results are
+		 * stored zero extended (their upper bits are architecturally
+		 * undefined anyway) */
+		case SPARC_REG_F0: return RegisterInfo(SPARC_REG_F0, 0, 8);
+		case SPARC_REG_F1: return RegisterInfo(SPARC_REG_F1, 0, 8);
+		case SPARC_REG_F2: return RegisterInfo(SPARC_REG_F2, 0, 8);
+		case SPARC_REG_F3: return RegisterInfo(SPARC_REG_F3, 0, 8);
+		case SPARC_REG_F4: return RegisterInfo(SPARC_REG_F4, 0, 8);
+		case SPARC_REG_F5: return RegisterInfo(SPARC_REG_F5, 0, 8);
+		case SPARC_REG_F6: return RegisterInfo(SPARC_REG_F6, 0, 8);
+		case SPARC_REG_F7: return RegisterInfo(SPARC_REG_F7, 0, 8);
+		case SPARC_REG_F8: return RegisterInfo(SPARC_REG_F8, 0, 8);
+		case SPARC_REG_F9: return RegisterInfo(SPARC_REG_F9, 0, 8);
+		case SPARC_REG_F10: return RegisterInfo(SPARC_REG_F10, 0, 8);
+		case SPARC_REG_F11: return RegisterInfo(SPARC_REG_F11, 0, 8);
+		case SPARC_REG_F12: return RegisterInfo(SPARC_REG_F12, 0, 8);
+		case SPARC_REG_F13: return RegisterInfo(SPARC_REG_F13, 0, 8);
+		case SPARC_REG_F14: return RegisterInfo(SPARC_REG_F14, 0, 8);
+		case SPARC_REG_F15: return RegisterInfo(SPARC_REG_F15, 0, 8);
+		case SPARC_REG_F16: return RegisterInfo(SPARC_REG_F16, 0, 8);
+		case SPARC_REG_F17: return RegisterInfo(SPARC_REG_F17, 0, 8);
+		case SPARC_REG_F18: return RegisterInfo(SPARC_REG_F18, 0, 8);
+		case SPARC_REG_F19: return RegisterInfo(SPARC_REG_F19, 0, 8);
+		case SPARC_REG_F20: return RegisterInfo(SPARC_REG_F20, 0, 8);
+		case SPARC_REG_F21: return RegisterInfo(SPARC_REG_F21, 0, 8);
+		case SPARC_REG_F22: return RegisterInfo(SPARC_REG_F22, 0, 8);
+		case SPARC_REG_F23: return RegisterInfo(SPARC_REG_F23, 0, 8);
+		case SPARC_REG_F24: return RegisterInfo(SPARC_REG_F24, 0, 8);
+		case SPARC_REG_F25: return RegisterInfo(SPARC_REG_F25, 0, 8);
+		case SPARC_REG_F26: return RegisterInfo(SPARC_REG_F26, 0, 8);
+		case SPARC_REG_F27: return RegisterInfo(SPARC_REG_F27, 0, 8);
+		case SPARC_REG_F28: return RegisterInfo(SPARC_REG_F28, 0, 8);
+		case SPARC_REG_F29: return RegisterInfo(SPARC_REG_F29, 0, 8);
+		case SPARC_REG_F30: return RegisterInfo(SPARC_REG_F30, 0, 8);
+		case SPARC_REG_F31: return RegisterInfo(SPARC_REG_F31, 0, 8);
+		case SPARC_REG_F32: return RegisterInfo(SPARC_REG_F32, 0, 8);
+		case SPARC_REG_F34: return RegisterInfo(SPARC_REG_F34, 0, 8);
+		case SPARC_REG_F36: return RegisterInfo(SPARC_REG_F36, 0, 8);
+		case SPARC_REG_F38: return RegisterInfo(SPARC_REG_F38, 0, 8);
+		case SPARC_REG_F40: return RegisterInfo(SPARC_REG_F40, 0, 8);
+		case SPARC_REG_F42: return RegisterInfo(SPARC_REG_F42, 0, 8);
+		case SPARC_REG_F44: return RegisterInfo(SPARC_REG_F44, 0, 8);
+		case SPARC_REG_F46: return RegisterInfo(SPARC_REG_F46, 0, 8);
+		case SPARC_REG_F48: return RegisterInfo(SPARC_REG_F48, 0, 8);
+		case SPARC_REG_F50: return RegisterInfo(SPARC_REG_F50, 0, 8);
+		case SPARC_REG_F52: return RegisterInfo(SPARC_REG_F52, 0, 8);
+		case SPARC_REG_F54: return RegisterInfo(SPARC_REG_F54, 0, 8);
+		case SPARC_REG_F56: return RegisterInfo(SPARC_REG_F56, 0, 8);
+		case SPARC_REG_F58: return RegisterInfo(SPARC_REG_F58, 0, 8);
+		case SPARC_REG_F60: return RegisterInfo(SPARC_REG_F60, 0, 8);
+		case SPARC_REG_F62: return RegisterInfo(SPARC_REG_F62, 0, 8);
+		/* fcc is a 2 bit field: 0 = equal, 1 = less, 2 = greater,
+		 * 3 = unordered */
+		case SPARC_REG_FCC0: return RegisterInfo(SPARC_REG_FCC0, 0, 1);
+		case SPARC_REG_FCC1: return RegisterInfo(SPARC_REG_FCC1, 0, 1);
+		case SPARC_REG_FCC2: return RegisterInfo(SPARC_REG_FCC2, 0, 1);
+		case SPARC_REG_FCC3: return RegisterInfo(SPARC_REG_FCC3, 0, 1);
 		case SPARC_REG_G0: return RegisterInfo(SPARC_REG_G0, 0, addressSize);
 		case SPARC_REG_G1: return RegisterInfo(SPARC_REG_G1, 0, addressSize);
 		case SPARC_REG_G2: return RegisterInfo(SPARC_REG_G2, 0, addressSize);
@@ -973,7 +956,7 @@ class SparcArchitecture: public Architecture
 		case SPARC_REG_I5: return RegisterInfo(SPARC_REG_I5, 0, addressSize);
 		case SPARC_REG_FP: return RegisterInfo(SPARC_REG_FP, 0, addressSize);
 		case SPARC_REG_I7: return RegisterInfo(SPARC_REG_I7, 0, addressSize);
-		case SPARC_REG_ICC: return RegisterInfo(SPARC_REG_ICC, 0, addressSize);
+		case SPARC_REG_ICC: return RegisterInfo(SPARC_REG_ICC, 0, 1);
 		case SPARC_REG_L0: return RegisterInfo(SPARC_REG_L0, 0, addressSize);
 		case SPARC_REG_L1: return RegisterInfo(SPARC_REG_L1, 0, addressSize);
 		case SPARC_REG_L2: return RegisterInfo(SPARC_REG_L2, 0, addressSize);
@@ -991,7 +974,7 @@ class SparcArchitecture: public Architecture
 		case SPARC_REG_SP: return RegisterInfo(SPARC_REG_SP, 0, addressSize);
 		case SPARC_REG_O7: return RegisterInfo(SPARC_REG_O7, 0, addressSize);
 		case SPARC_REG_Y: return RegisterInfo(SPARC_REG_Y, 0, addressSize);
-		case SPARC_REG_XCC: return RegisterInfo(SPARC_REG_XCC, 0, addressSize);
+		case SPARC_REG_XCC: return RegisterInfo(SPARC_REG_XCC, 0, 1);
 		default:
 				//LogError("%s(%d == \"%s\") invalid argument", __func__,
 				//  regId, powerpc_reg_to_str(regId));
@@ -1047,150 +1030,140 @@ class SparcArchitecture: public Architecture
 
 	/*************************************************************************/
 
+	/*************************************************************************/
+	/* Patching.
+	 *
+	 * The condition-field encodings live in il.cpp/il.h (SparcPatchBranchKind,
+	 * SparcApplyBranchPatch): the b/fb families carry their condition in a
+	 * 4-bit nibble where "always" is 8 and every condition's complement is 8
+	 * away, and the V9 brz family inverts by toggling a single bit. Which
+	 * forms are patchable is decided from capstone's decode, never from raw
+	 * bit guessing (project rule).
+	 *
+	 * The data buffer holds bytes in the architecture's in-memory order, so
+	 * instruction words are assembled byte by byte instead of trusting the
+	 * host's byte order.
+	 */
+
+	uint32_t getSparcInsnWord(const uint8_t *data)
+	{
+		if (endian == LittleEndian)
+			return (uint32_t)data[0] | ((uint32_t)data[1] << 8) |
+			       ((uint32_t)data[2] << 16) | ((uint32_t)data[3] << 24);
+
+		return ((uint32_t)data[0] << 24) | ((uint32_t)data[1] << 16) |
+		       ((uint32_t)data[2] << 8) | (uint32_t)data[3];
+	}
+
+	void putSparcInsnWord(uint8_t *data, uint32_t word)
+	{
+		if (endian == LittleEndian)
+		{
+			data[0] = (uint8_t)word;
+			data[1] = (uint8_t)(word >> 8);
+			data[2] = (uint8_t)(word >> 16);
+			data[3] = (uint8_t)(word >> 24);
+		}
+		else
+		{
+			data[0] = (uint8_t)(word >> 24);
+			data[1] = (uint8_t)(word >> 16);
+			data[2] = (uint8_t)(word >> 8);
+			data[3] = (uint8_t)word;
+		}
+	}
+
+	/*
+	 * Applies (or, with writeBack == false, only attempts) the given branch
+	 * patch mode; doubles as the implementation of the Is*Available checks.
+	 */
+	bool branchPatch(const uint8_t *data, uint64_t addr, size_t len, int mode, bool writeBack)
+	{
+		struct decomp_result res;
+		sparc_patch_kind_t kind;
+		uint32_t word;
+
+		if (len < 4)
+			return false;
+
+		if (sparc_decompose(data, 4, (uint32_t)addr, endian == LittleEndian, &res, GetAddressSize() == 8, cs_mode_local))
+			return false;
+
+		kind = SparcPatchBranchKind(res.insn.id);
+		if (kind == SPARC_PATCH_NOT_BRANCH)
+			return false;
+
+		word = getSparcInsnWord(data);
+		if (!SparcApplyBranchPatch(&word, kind, mode))
+			return false;
+
+		if (writeBack)
+			putSparcInsnWord((uint8_t *)data, word);
+		return true;
+	}
+
+	/*
+	 * Skip-and-return: the call slot is overwritten with
+	 * "mov <value>, %o0" so control falls through with the return value in
+	 * the first output register (same one-instruction trick the PPC
+	 * original used with li/blr). Only simm13 values encode as a single
+	 * mov; anything else reports unavailable.
+	 */
+	bool skipCallPatch(const uint8_t *data, uint64_t addr, size_t len, uint64_t value, bool writeBack)
+	{
+		struct decomp_result res;
+		uint32_t word;
+
+		if (len < 4)
+			return false;
+
+		if (sparc_decompose(data, 4, (uint32_t)addr, endian == LittleEndian, &res, GetAddressSize() == 8, cs_mode_local))
+			return false;
+
+		if (res.insn.id != SPARC_INS_CALL)
+			return false;
+
+		if (!SparcEncodeReturnInO0(value, &word))
+			return false;
+
+		if (writeBack)
+			putSparcInsnWord((uint8_t *)data, word);
+		return true;
+	}
+
+	/*************************************************************************/
+
 	virtual bool IsNeverBranchPatchAvailable(const uint8_t* data, uint64_t addr, size_t len) override
 	{
-		(void)data;
-		(void)addr;
-		(void)len;
 		MYLOG("%s()\n", __func__);
-		return false;
+		return branchPatch(data, addr, len, SPARC_PATCH_NEVER, false);
 	}
 
 	virtual bool IsAlwaysBranchPatchAvailable(const uint8_t *data, uint64_t addr, size_t len) override
 	{
-		(void)data;
-		(void)addr;
-		(void)len;
-
 		MYLOG("%s()\n", __func__);
-
-		if (len < 4)
-		{
-			MYLOG("data too small");
-			return false;
-		}
-
-		uint32_t iw = *(uint32_t *)data;
-		if (endian == BigEndian)
-			iw = bswap32(iw);
-
-		MYLOG("analyzing instruction word: 0x%08X\n", iw);
-
-		if ((iw & 0xfc000000) == 0x40000000)
-		{ /* BXX B-form */
-			MYLOG("BXX B-form\n");
-			return true;
-		}
-
-		if ((iw & 0xfc0007fe) == 0x4c000020)
-		{ /* BXX to LR, XL-form */
-			MYLOG("BXX to LR, XL-form\n");
-
-			if ((iw & 0x03E00000) != 0x02800000) /* is already unconditional? */
-				return true;
-		}
-
-		if ((iw & 0xfc0007fe) == 0x4c000420)
-		{ /* BXX to count reg, XL-form */
-			MYLOG("BXX to count reg, XL-form\n");
-
-			if ((iw & 0x03E00000) != 0x02800000) /* is already unconditional? */
-				return true;
-		}
-
-		return false;
+		return branchPatch(data, addr, len, SPARC_PATCH_ALWAYS, false);
 	}
 
 	virtual bool IsInvertBranchPatchAvailable(const uint8_t* data, uint64_t addr, size_t len) override
 	{
-		(void)data;
-		(void)addr;
-		(void)len;
 		MYLOG("%s()\n", __func__);
-
-		if(len < 4) {
-			MYLOG("data too small");
-			return false;
-		}
-
-		uint32_t iw = *(uint32_t *)data;
-		if(endian == BigEndian)
-			iw = bswap32(iw);
-
-		MYLOG("analyzing instruction word: 0x%08X\n", iw);
-
-		if ((iw & 0xfc000000) == 0x40000000)
-		{
-			MYLOG("BXX B-form\n");
-		}
-		else if ((iw & 0xfc0007fe) == 0x4c000020)
-		{
-			MYLOG("BXX to LR, XL-form\n");
-		}
-		else if ((iw & 0xfc0007fe) == 0x4c000420)
-		{
-			MYLOG("BXX to count reg, XL-form\n");
-		}
-		else
-		{
-			return false;
-		}
-
-		/* BO and BI exist in all 3 of the above forms */
-		uint32_t bo = (iw >> 21) & 0x1F;
-		if((bo & 0x1E) == 0) return true; // (--ctr)!=0 && cr_bi==0
-		if((bo & 0x1E) == 2) return true; // (--ctr)==0 && cr_bi==0
-		if((bo & 0x1C) == 4) return true; // cr_bi==0
-		if((bo & 0x1E) == 8) return true; // (--ctr)!=0 && cr_bi==1
-		if((bo & 0x1E) == 10) return true; // (--ctr)==0 && cr_bi==1
-		if((bo & 0x1C) == 12) return true; // cr_bi==1
-		return false;
+		return branchPatch(data, addr, len, SPARC_PATCH_INVERT, false);
 	}
 
 	virtual bool IsSkipAndReturnZeroPatchAvailable(const uint8_t *data, uint64_t addr, size_t len) override
 	{
-		(void)data;
-		(void)addr;
-		(void)len;
 		MYLOG("%s()\n", __func__);
-
-		uint32_t iw = *(uint32_t *)data;
-		if (endian == BigEndian)
-			iw = bswap32(iw);
-
-		MYLOG("analyzing instruction word: 0x%08X\n", iw);
-
-		if ((iw & 0xfc000001) == 0x48000001)
-		{
-			MYLOG("B I-form with LK==1\n");
-			return true;
-		}
-		else if ((iw & 0xfc000001) == 0x40000001)
-		{
-			MYLOG("BXX B-form with LK==1\n");
-			return true;
-		}
-		else if ((iw & 0xfc0007fe) == 0x4c000020)
-		{
-			MYLOG("BXX to LR, XL-form\n");
-			return true;
-		}
-		else if ((iw & 0xfc0007ff) == 0x4c000421)
-		{
-			MYLOG("BXX to count reg, XL-form with LK==1\n");
-			return true;
-		}
-
-		return false;
+		return skipCallPatch(data, addr, len, 0, false);
 	}
 
 	virtual bool IsSkipAndReturnValuePatchAvailable(const uint8_t* data, uint64_t addr, size_t len) override
 	{
-		(void)data;
-		(void)addr;
-		(void)len;
 		MYLOG("%s()\n", __func__);
-		return IsSkipAndReturnZeroPatchAvailable(data, addr, len);
+		/* BN checks availability before asking for a value, so accept the
+		 * same calls the zero patch accepts; the writer enforces the
+		 * simm13 range for the actual value. */
+		return skipCallPatch(data, addr, len, 0, false);
 	}
 
 	/*************************************************************************/
@@ -1223,104 +1196,19 @@ class SparcArchitecture: public Architecture
 	virtual bool AlwaysBranch(uint8_t *data, uint64_t addr, size_t len) override
 	{
 		MYLOG("%s()\n", __func__);
-
-		(void)len;
-		(void)addr;
-
-		uint32_t iwAfter = 0;
-		uint32_t iwBefore = *(uint32_t *)data;
-		if (endian == BigEndian)
-			iwBefore = bswap32(iwBefore);
-
-		if ((iwBefore & 0xfc000000) == 0x40000000)
-		{ /* BXX B-form */
-			MYLOG("BXX B-form\n");
-
-			uint32_t li_aa_lk = iwBefore & 0xffff; /* grab BD,AA,LK */
-			if (li_aa_lk & 0x8000)				   /* sign extend? */
-				li_aa_lk |= 0x03FF0000;
-
-			iwAfter = 0x48000000 | li_aa_lk;
-		}
-		else if ((iwBefore & 0xfc0007fe) == 0x4c000020)
-		{ /* BXX to LR, XL-form */
-			MYLOG("BXX to LR, XL-form\n");
-
-			iwAfter = (iwBefore & 0xFC1FFFFF) | 0x02800000; /* set BO = 10100 */
-		}
-		else if ((iwBefore & 0xfc0007fe) == 0x4c000420)
-		{ /* BXX to count reg, XL-form */
-			MYLOG("BXX to count reg, XL-form\n");
-
-			iwAfter = (iwBefore & 0xFC1FFFFF) | 0x02800000; /* set BO = 10100 */
-		}
-		else
-		{
-			return false;
-		}
-
-		if (endian == BigEndian)
-			iwAfter = bswap32(iwAfter);
-		*(uint32_t *)data = iwAfter;
-		return true;
+		return branchPatch(data, addr, len, SPARC_PATCH_ALWAYS, true);
 	}
 
 	virtual bool InvertBranch(uint8_t *data, uint64_t addr, size_t len) override
 	{
-		(void)data;
-		(void)addr;
-		(void)len;
 		MYLOG("%s()\n", __func__);
-
-		if(len < 4) {
-			MYLOG("data too small");
-			return false;
-		}
-
-		uint32_t iw = *(uint32_t *)data;
-		if(endian == BigEndian)
-			iw = bswap32(iw);
-
-		MYLOG("analyzing instruction word: 0x%08X\n", iw);
-
-		if((iw & 0xfc000000) == 0x40000000) {
-			MYLOG("BXX B-form\n");
-		} else if((iw & 0xfc0007fe) == 0x4c000020) {
-			MYLOG("BXX to LR, XL-form\n");
-		} else if((iw & 0xfc0007fe) == 0x4c000420) {
-			MYLOG("BXX to count reg, XL-form\n");
-		} else {
-			return false;
-		}
-
-		iw ^= 0x1000000;
-
-		/* success */
-		if(endian == BigEndian)
-			iw = bswap32(iw);
-		*(uint32_t *)data = iw;
-		return true;
+		return branchPatch(data, addr, len, SPARC_PATCH_INVERT, true);
 	}
 
 	virtual bool SkipAndReturnValue(uint8_t* data, uint64_t addr, size_t len, uint64_t value) override
 	{
-		(void)data;
-		(void)addr;
-		(void)len;
-		(void)value;
 		MYLOG("%s()\n", __func__);
-
-		if(value > 0x4000)
-			return false;
-
-		/* li (load immediate) is pseudo-op for addi rD,rA,SIMM with rA=0 */
-		uint32_t iw = 0x38600000 | (value & 0xFFFF); // li (load immediate)
-
-		/* success */
-		if(endian == BigEndian)
-			iw = bswap32(iw);
-		*(uint32_t *)data = iw;
-		return true;
+		return skipCallPatch(data, addr, len, value, true);
 	}
 
 	/*************************************************************************/
@@ -1453,7 +1341,7 @@ class SparcImportedFunctionRecognizer: public FunctionRecognizer
 class SparcSWCallingConvention: public CallingConvention
 {
 public:
-	SparcSWCallingConvention(Architecture* arch): CallingConvention(arch, "sparc_window")
+	SparcSWCallingConvention(Architecture* arch): CallingConvention(arch, "cdecl")
 	{
 	}
 
@@ -1463,7 +1351,7 @@ public:
 	{
 		return vector<uint32_t>{
 			SPARC_REG_O0, SPARC_REG_O1, SPARC_REG_O2, SPARC_REG_O3,
-			SPARC_REG_O4, SPARC_REG_O5, SPARC_REG_O7
+			SPARC_REG_O4, SPARC_REG_O5
 			/* remaining arguments onto stack */
 		};
 	}
@@ -1529,7 +1417,7 @@ public:
 	{
 		return vector<uint32_t>{
 			SPARC_REG_O0, SPARC_REG_O1, SPARC_REG_O2, SPARC_REG_O3,
-			SPARC_REG_O4, SPARC_REG_O5, SPARC_REG_O7
+			SPARC_REG_O4, SPARC_REG_O5
 			/* remaining arguments onto stack */
 		};
 	}

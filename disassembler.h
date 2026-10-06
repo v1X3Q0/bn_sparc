@@ -42,6 +42,16 @@ Then some helpers if you need them:
 #define SPARC_BP_MASK		0xd1c00000
 #define SPARC_BP_MASKED		0x00c00000
 
+#define SPARC_ILLTRAP_MASK		0xc1c00000
+#define SPARC_ILLTRAP_MASKED	0x00000000
+
+#define SPARC_CASA_MASK		0xc1f80000
+#define SPARC_CASA_MASKED	0xc1e00000
+#define SPARC_CASAXA_MASKED	0xc1f00000
+
+#define SPARC_STFSR_MASK	0xc1f80000
+#define SPARC_STFSR_MASKED	0xc1280000
+
 //*****************************************************************************
 // structs and types
 //*****************************************************************************
